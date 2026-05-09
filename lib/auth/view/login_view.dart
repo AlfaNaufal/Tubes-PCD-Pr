@@ -42,10 +42,8 @@ class _LoginViewState extends State<LoginView> {
 
   void _navigateByRole(UserModel user) {
     if (user.isSupervisor) {
-      // Navigasi ke dashboard supervisor
       Navigator.of(context).pushReplacementNamed('/dashboard');
     } else {
-      // HSE Inspector → halaman kamera/inspeksi
       Navigator.of(context).pushReplacementNamed('/inspection');
     }
   }
@@ -201,9 +199,10 @@ class _LoginViewState extends State<LoginView> {
                             color: const Color(0xFF8B949E),
                             size: 20,
                           ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
+                          onPressed:
+                              () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
@@ -223,9 +222,10 @@ class _LoginViewState extends State<LoginView> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: auth.isLoading
-                              ? null
-                              : () => _onLoginPressed(auth),
+                          onPressed:
+                              auth.isLoading
+                                  ? null
+                                  : () => _onLoginPressed(auth),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFFB800),
                             foregroundColor: Colors.black,
@@ -237,29 +237,30 @@ class _LoginViewState extends State<LoginView> {
                             ),
                             elevation: 0,
                           ),
-                          child: auth.isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.black54,
+                          child:
+                              auth.isLoading
+                                  ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.black54,
+                                    ),
+                                  )
+                                  : const Text(
+                                    'Masuk',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
-                                )
-                              : const Text(
-                                  'Masuk',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
                         ),
                       ),
 
                       const SizedBox(height: 40),
 
-                      // ── Footer hint (dev only) ───────────────────────
+                      // ── Footer ───────────────────────────────────────
                       Center(
                         child: Text(
                           'v1.0.0 · APD Guard K3',
@@ -281,7 +282,7 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 
-  // ── Widget Helpers ──────────────────────────────────────────────────────
+  // ── Widget Helpers ───────────────────────────────────────────────────────
 
   Widget _buildLabel(String text) {
     return Text(

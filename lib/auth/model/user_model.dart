@@ -1,20 +1,25 @@
 // lib/auth/model/user_model.dart
 
 /// Role sesuai nilai di koleksi MongoDB: field "role"
+///
+/// Nilai aktual dari MongoDB Atlas (apd_detection_db > users):
+///   "hse_inspector"  → Petugas K3
+///   "hse_supervisor" → Admin/Supervisor
+///   "supervisor"     → alias lama, tetap didukung (backward-compat)
 enum UserRole {
-  hseInspector, // "hse_inspector" → Petugas K3
-  supervisor, // "supervisor"    → Admin/Supervisor
-  unknown, // fallback jika ada role baru
+  hseInspector, // "hse_inspector"
+  supervisor, // "hse_supervisor" atau "supervisor"
+  unknown, // fallback jika ada role tidak dikenal
 }
 
 extension UserRoleX on UserRole {
-  /// Nilai string yang tersimpan di MongoDB
+  /// Nilai string canonical yang tersimpan di MongoDB
   String get dbValue {
     switch (this) {
       case UserRole.hseInspector:
         return 'hse_inspector';
       case UserRole.supervisor:
-        return 'supervisor';
+        return 'hse_supervisor'; // nilai aktual di MongoDB
       case UserRole.unknown:
         return 'unknown';
     }
@@ -32,11 +37,14 @@ extension UserRoleX on UserRole {
     }
   }
 
+  /// Parse string role dari MongoDB → enum.
+  /// Mendukung "hse_supervisor" (nilai aktual) dan "supervisor" (lama).
   static UserRole fromString(String? value) {
     switch (value) {
       case 'hse_inspector':
         return UserRole.hseInspector;
-      case 'supervisor':
+      case 'hse_supervisor': // nilai aktual di MongoDB Atlas
+      case 'supervisor': // backward-compat
         return UserRole.supervisor;
       default:
         return UserRole.unknown;
@@ -45,7 +53,7 @@ extension UserRoleX on UserRole {
 }
 
 class UserModel {
-  /// ObjectId MongoDB disimpan sebagai String (hex 24 karakter)
+  /// ObjectId MongoDB disimpan sebagai String hex (24 karakter)
   final String id;
   final String name;
   final String email;
@@ -70,7 +78,6 @@ class UserModel {
   /// Parse dari dokumen MongoDB.
   /// [map] boleh berisi ObjectId sebagai String atau Map {'\$oid': '...'}.
   factory UserModel.fromMap(Map<String, dynamic> map) {
-    // ObjectId bisa datang sebagai String langsung atau {'$oid': '...'}
     final rawId = map['_id'];
     final String id;
     if (rawId is Map) {
@@ -79,7 +86,6 @@ class UserModel {
       id = rawId?.toString() ?? '';
     }
 
-    // created_at bisa berupa DateTime, String ISO-8601, atau Map {'\$date': ms}
     DateTime? createdAt;
     final rawDate = map['created_at'];
     if (rawDate is DateTime) {
@@ -101,7 +107,7 @@ class UserModel {
   }
 
   /// Serialize untuk disimpan ke Hive atau dikirim ke API.
-  /// Tidak menyertakan password — password TIDAK pernah disimpan di sisi klien.
+  /// Password TIDAK pernah disimpan di sisi klien.
   Map<String, dynamic> toMap() {
     return {
       '_id': id,

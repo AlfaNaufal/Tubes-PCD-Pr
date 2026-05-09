@@ -9,20 +9,20 @@ import 'package:provider/provider.dart';
 import 'auth/controller/auth_controller.dart';
 import 'auth/model/user_model.dart';
 import 'auth/view/login_view.dart';
-import 'core/env_config.dart';
+import 'inspection/view/camera_view.dart';
+import 'inspection/view/inspection_home_view.dart'; // ← baru
 
 // ── Stub imports — uncomment saat role lain sudah siap ───────────────────────
-// import 'dashboard/controller/dashboard_controller.dart';
-// import 'dashboard/view/dashboard_view.dart';
-// import 'dashboard/view/history_view.dart';
-// import 'inspection/controller/inspection_controller.dart';
-// import 'inspection/view/camera_view.dart';
-// import 'inspection/view/session_view.dart';
+// import 'core/env_config.dart';                             // Role 3
+// import 'dashboard/controller/dashboard_controller.dart';  // Role 4
+// import 'dashboard/view/dashboard_view.dart';              // Role 4
+// import 'dashboard/view/history_view.dart';                // Role 4
+// import 'inspection/controller/inspection_controller.dart';// Role 2
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Orientasi: portrait only (kamera K3 selalu portrait) ─────────────────
+  // ── Orientasi: portrait only ──────────────────────────────────────────────
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -31,13 +31,11 @@ void main() async {
   // ── Hive init (Role 4) ────────────────────────────────────────────────────
   final appDir = await getApplicationDocumentsDirectory();
   await Hive.initFlutter(appDir.path);
-  // TODO Role 4: Daftarkan adapter Hive di sini setelah generate
+  // TODO Role 4: Daftarkan adapter Hive setelah generate
   // Hive.registerAdapter(InspectionSessionModelAdapter());
   // Hive.registerAdapter(APDResultAdapter());
 
-  // ── Env config init (Role 3 & 2) ─────────────────────────────────────────
-  // EnvConfig.init() membaca nilai dari assets/.env
-  // TODO: uncomment saat env_config.dart sudah diisi Role 3
+  // ── Env config init (Role 3) ──────────────────────────────────────────────
   // await EnvConfig.init();
 
   runApp(const APDGuardApp());
@@ -62,8 +60,6 @@ class APDGuardApp extends StatelessWidget {
       child: MaterialApp(
         title: 'APD Guard',
         debugShowCheckedModeBanner: false,
-
-        // ── Tema aplikasi ───────────────────────────────────────────────────
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFFFFB800),
@@ -72,37 +68,31 @@ class APDGuardApp extends StatelessWidget {
           scaffoldBackgroundColor: const Color(0xFF0D1117),
           useMaterial3: true,
         ),
-
-        // ── Entry point: selalu mulai dari login ────────────────────────────
         home: const _AuthGate(),
-
-        // ── Named routes ────────────────────────────────────────────────────
         routes: {
           '/login': (_) => const LoginView(),
-
-          // Role 1 → halaman inspeksi kamera
-          // '/inspection': (_) => const CameraView(),
-
-          // Role 4 → dashboard supervisor & riwayat
-          // '/dashboard': (_) => const DashboardView(),
-          // '/history': (_) => const HistoryView(),
-        },
-
-        // ── Route guard: redirect berdasarkan role ───────────────────────────
-        onGenerateRoute: (settings) {
-          // Digunakan untuk route yang butuh cek autentikasi/RBAC
-          // Implementasi lengkap bisa memakai GoRouter di iterasi berikutnya
-          return null;
+          // Inspector routes
+          '/inspection/home': (_) => const InspectionHomeView(), // ← baru
+          '/inspection/camera': (_) => const CameraView(), // ← baru (spesifik)
+          // Alias lama — tetap ada agar tidak ada referensi yang rusak
+          '/inspection': (_) => const InspectionHomeView(), // ← arahkan ke home
+          // '/dashboard': (_) => const DashboardView(), // Role 4
+          // '/history':   (_) => const HistoryView(),   // Role 4
         },
       ),
     );
   }
 }
 
-/// _AuthGate menentukan halaman awal berdasarkan status autentikasi.
-/// - Belum login → LoginView
-/// - Sudah login sebagai hse_inspector → CameraView (stub: LoginView sementara)
-/// - Sudah login sebagai supervisor → DashboardView (stub: LoginView sementara)
+// ── Auth Gate ─────────────────────────────────────────────────────────────────
+
+/// Menentukan halaman awal berdasarkan status autentikasi dan role.
+///
+/// Flow:
+///   Belum login          → LoginView
+///   hse_inspector        → InspectionHomeView   ← diubah dari CameraView
+///   hse_supervisor       → DashboardView (stub: _RolePlaceholder)
+///   unknown              → paksa logout → LoginView
 class _AuthGate extends StatelessWidget {
   const _AuthGate();
 
@@ -110,14 +100,17 @@ class _AuthGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthController>(
       builder: (context, auth, _) {
-        // Belum autentikasi
-        if (!auth.isAuthenticated) {
-          return const LoginView();
-        }
+        if (!auth.isAuthenticated) return const LoginView();
 
         final user = auth.currentUser!;
 
-        // Supervisor → Dashboard
+        // Role tidak dikenal → paksa logout
+        if (user.role == UserRole.unknown) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => auth.logout());
+          return const LoginView();
+        }
+
+        // Supervisor → Dashboard (stub sampai Role 4 siap)
         if (user.isSupervisor) {
           // TODO: return const DashboardView();
           return _RolePlaceholder(
@@ -127,20 +120,15 @@ class _AuthGate extends StatelessWidget {
           );
         }
 
-        // HSE Inspector → Halaman Kamera
-        // TODO: return const CameraView();
-        return _RolePlaceholder(
-          role: user.role.displayName,
-          destination: 'Halaman Inspeksi Kamera',
-          icon: Icons.camera_alt_outlined,
-        );
+        // HSE Inspector → Inspection Home (bukan langsung CameraView)
+        return const InspectionHomeView();
       },
     );
   }
 }
 
-/// Placeholder sementara sampai Role 2/3/4 siap diintegrasikan.
-/// Hapus class ini setelah semua CameraView & DashboardView tersedia.
+// ── Role Placeholder (supervisor, sementara sampai Role 4 siap) ───────────────
+
 class _RolePlaceholder extends StatelessWidget {
   final String role;
   final String destination;

@@ -59,7 +59,6 @@ class _CameraViewState extends State<CameraView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Inisialisasi kamera saat halaman pertama kali dibuka
     _initCamera();
   }
 
@@ -81,11 +80,9 @@ class _CameraViewState extends State<CameraView> {
     // inspController.resultsStream.listen((results) {
     //   if (mounted) {
     //     setState(() => _detectionResults = results);
-    //     _streamHandler.markFrameProcessed(); // unlock frame berikutnya
+    //     _streamHandler.markFrameProcessed();
     //   }
     // });
-    //
-    // Untuk saat ini, stream handler tetap aktif; hasil deteksi kosong.
   }
 
   @override
@@ -188,7 +185,7 @@ class _CameraViewState extends State<CameraView> {
       return const SizedBox.shrink();
     }
 
-    // Agar preview memenuhi layar (cover mode)
+    // Preview memenuhi layar (cover mode)
     return SizedBox.expand(
       child: FittedBox(
         fit: BoxFit.cover,
@@ -207,9 +204,11 @@ class _CameraViewState extends State<CameraView> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            // Back button
             GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
+              onTap:
+                  () => Navigator.of(
+                    context,
+                  ).pushReplacementNamed('/inspection/home'),
               child: Container(
                 width: 40,
                 height: 40,
@@ -249,7 +248,6 @@ class _CameraViewState extends State<CameraView> {
                 ],
               ),
             ),
-            // Indicator status
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
@@ -281,7 +279,6 @@ class _CameraViewState extends State<CameraView> {
   }
 
   Widget _buildStatusOverlay(CameraManager cam) {
-    // Tampilkan pesan di pojok bawah saat kamera tidak aktif
     if (cam.status == CameraStatus.paused) {
       return Align(
         alignment: Alignment.bottomCenter,
@@ -299,7 +296,6 @@ class _CameraViewState extends State<CameraView> {
         ),
       );
     }
-
     return const SizedBox.shrink();
   }
 }

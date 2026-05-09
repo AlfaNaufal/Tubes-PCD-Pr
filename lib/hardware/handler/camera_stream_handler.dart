@@ -5,13 +5,12 @@ import 'package:camera/camera.dart';
 import '../controller/camera_manager.dart';
 
 /// CameraStreamHandler adalah jembatan antara [CameraManager] (Role 1)
-/// dan inference pipeline milik Role 2 (APDInterpreter / IsolateRunner).
+/// dan inference pipeline milik Role 2.
 ///
 /// Tanggung jawab:
 /// - Subscribe ke stream CameraImage dari CameraManager
 /// - Mencegah frame flooding dengan flag [_isProcessing]
 /// - Expose [imageStream] sebagai Stream<CameraImage> untuk Role 2
-
 class CameraStreamHandler {
   final CameraManager _cameraManager;
 
@@ -26,7 +25,7 @@ class CameraStreamHandler {
   // ── Public API ────────────────────────────────────────────────────────────
 
   /// Stream CameraImage yang bisa di-listen oleh Role 2.
-  /// Menggunakan broadcast agar bisa di-listen lebih dari satu kali.
+  /// Broadcast agar bisa di-listen lebih dari satu kali.
   Stream<CameraImage> get imageStream => _streamController.stream;
 
   /// Mulai mengalirkan frame dari kamera.
@@ -36,8 +35,8 @@ class CameraStreamHandler {
     _isActive = true;
 
     await _cameraManager.startImageStream((CameraImage image) {
-      // Guard: skip frame jika frame sebelumnya masih diproses
-      // Ini mencegah antrean frame menumpuk di memory
+      // Guard: skip frame jika frame sebelumnya masih diproses.
+      // Mencegah antrean frame menumpuk di memory (FR-05).
       if (_isProcessing) return;
       _isProcessing = true;
       _streamController.add(image);

@@ -8,12 +8,9 @@ enum CameraStatus { uninitialized, initializing, ready, paused, error }
 
 /// CameraManager bertanggung jawab atas:
 /// 1. Inisialisasi CameraController (FR-01)
-/// 2. Lifecycle management: init saat halaman dibuka, dispose saat keluar / app background (FR-01)
+/// 2. Lifecycle management: init saat halaman dibuka, dispose saat keluar /
+///    app background (FR-01)
 /// 3. Expose [previewSize] untuk coordinate mapping oleh Role 3
-///
-/// Menggunakan [WidgetsBindingObserver] sebagai mixin agar otomatis
-/// mewarisi semua method default — tidak perlu stub manual, future-proof
-/// untuk update Flutter SDK.
 class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   CameraController? _controller;
   CameraStatus _status = CameraStatus.uninitialized;
@@ -31,7 +28,7 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   Size? get previewSize {
     if (_controller == null || !_controller!.value.isInitialized) return null;
     return Size(
-      _controller!.value.previewSize!.height, // height jadi width (portrait)
+      _controller!.value.previewSize!.height, // height → width (portrait)
       _controller!.value.previewSize!.width,
     );
   }
@@ -54,7 +51,7 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
 
-      // Gunakan kamera belakang (index 0 biasanya back camera)
+      // Gunakan kamera belakang
       final backCamera = cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
         orElse: () => cameras.first,
@@ -62,7 +59,7 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
 
       _controller = CameraController(
         backCamera,
-        ResolutionPreset.medium, // sesuai CAMERA_RESOLUTION=medium di .env
+        ResolutionPreset.medium, // sesuai CAMERA_RESOLUTION=medium
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420, // FR-01: YUV420 untuk PCD
       );
@@ -87,7 +84,6 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   ) async {
     if (!isReady) return;
     if (_controller!.value.isStreamingImages) return;
-
     await _controller!.startImageStream(onImage);
   }
 
@@ -95,16 +91,13 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> stopImageStream() async {
     if (!isReady) return;
     if (!(_controller?.value.isStreamingImages ?? false)) return;
-
     await _controller!.stopImageStream();
   }
 
   // ── Dispose ───────────────────────────────────────────────────────────────
 
   /// Dispose kamera sepenuhnya.
-  /// Dipanggil saat:
-  /// - Widget unmount (dispose())
-  /// - App masuk background (AppLifecycleState.paused)
+  /// Dipanggil saat widget unmount atau app masuk background.
   Future<void> disposeCamera() async {
     WidgetsBinding.instance.removeObserver(this);
 
@@ -126,7 +119,7 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        // App masuk background → stop stream & dispose untuk hemat baterai/RAM
+        // App masuk background → stop stream & dispose
         disposeCamera();
         break;
       case AppLifecycleState.resumed:

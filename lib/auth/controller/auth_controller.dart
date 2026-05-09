@@ -6,10 +6,11 @@ import '../model/user_model.dart';
 /// State enum untuk status autentikasi
 enum AuthStatus { idle, loading, authenticated, error }
 
-/// AuthController menggunakan ChangeNotifier (kompatibel dengan Provider dari Proyek 4).
-/// Bertanggung jawab atas:
+/// AuthController menggunakan ChangeNotifier (kompatibel dengan Provider).
+///
+/// Tanggung jawab:
 /// - Login dengan email + password
-/// - Penyimpanan sesi user (in-memory; bisa diperluas ke Hive)
+/// - Penyimpanan sesi user (in-memory)
 /// - RBAC: expose role user agar view dapat menyesuaikan tampilan
 class AuthController extends ChangeNotifier {
   AuthStatus _status = AuthStatus.idle;
@@ -25,12 +26,14 @@ class AuthController extends ChangeNotifier {
   // ── Login ────────────────────────────────────────────────────────────────
 
   /// Login menggunakan email dan password.
-  /// Untuk saat ini menggunakan mock data; ganti dengan MongoDB/REST call sesuai Proyek 4.
+  /// Saat ini menggunakan mock data yang sesuai dengan dokumen aktual
+  /// di MongoDB Atlas (apd_detection_db > users).
+  /// TODO: ganti dengan MongoDB query + bcrypt verify dari Proyek 4.
   Future<void> login({required String email, required String password}) async {
     _setLoading();
 
     try {
-      // Simulasi network delay (ganti dengan actual API call dari Proyek 4)
+      // Simulasi network delay
       await Future.delayed(const Duration(milliseconds: 800));
 
       final user = _mockAuthenticate(email: email, password: password);
@@ -60,10 +63,9 @@ class AuthController extends ChangeNotifier {
   // ── RBAC Helpers ─────────────────────────────────────────────────────────
 
   /// Cek apakah user yang login boleh akses rute tertentu.
-  /// Digunakan oleh GoRouter atau Navigator guard.
+  /// Supervisor bisa akses semua; HSE Inspector hanya role-nya sendiri.
   bool canAccess(UserRole requiredRole) {
     if (_currentUser == null) return false;
-    // Supervisor bisa akses semua; PetugasK3 hanya role-nya sendiri
     if (_currentUser!.role == UserRole.supervisor) return true;
     return _currentUser!.role == requiredRole;
   }
@@ -82,39 +84,37 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mock auth — sesuai data MongoDB Atlas (project-4 > apd_detection_db > users).
-  /// Password di MongoDB sudah di-hash; untuk mock kita terima plaintext lalu
-  /// ganti dengan bcrypt/hash comparison saat integrasi penuh.
+  /// Mock auth — data SESUAI dengan dokumen aktual di MongoDB Atlas.
   ///
-  /// Struktur dokumen aktual:
-  /// { _id: ObjectId, name, email, password (hashed), role, created_at }
-  /// Role yang diketahui: "hse_inspector", "supervisor"
+  /// Screenshot MongoDB menunjukkan:
+  ///   Doc 1: email "budi@k3.com",       password "inspector123",  role "hse_inspector"
+  ///   Doc 2: email "supervisor@k3.com", password "supervisor123", role "hse_supervisor"
+  ///
+  /// TODO: Ganti dengan MongoDB query + bcrypt.checkpw() saat integrasi penuh.
   UserModel? _mockAuthenticate({
     required String email,
     required String password,
   }) {
-    // Mock credentials — ganti dengan query MongoDB + hash verify dari Proyek 4
     const mockUsers = [
       {
-        '_id': '69fdeecee2d5ab000000001', // contoh ObjectId hex
+        '_id': '69fdeecee2d5ab000000001',
         'name': 'Budi Santoso',
-        'email': 'budi@k3.com', // sesuai data MongoDB
-        'password': 'hashed_password', // placeholder; cocokkan dengan bcrypt
-        'role': 'hse_inspector', // sesuai nilai di MongoDB
+        'email': 'budi@k3.com',
+        'password': 'inspector123', // sesuai MongoDB Atlas screenshot
+        'role': 'hse_inspector',
         'created_at': '2026-05-08T14:10:22.000Z',
       },
       {
-        '_id': '69fdeecee2d5ab000000002',
+        '_id': '69fe936c6a60b7000000002',
         'name': 'Admin Supervisor',
         'email': 'supervisor@k3.com',
         'password': 'supervisor123',
-        'role': 'supervisor',
-        'created_at': '2026-05-08T14:10:22.000Z',
+        'role': 'hse_supervisor', // sesuai MongoDB Atlas screenshot
+        'created_at': '2026-05-09T08:36:00.000Z',
       },
     ];
 
     for (final u in mockUsers) {
-      // TODO: ganti perbandingan password dengan BCrypt.checkpw() dari Proyek 4
       if (u['email'] == email && u['password'] == password) {
         return UserModel.fromMap(Map<String, dynamic>.from(u));
       }
