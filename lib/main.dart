@@ -12,10 +12,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'APD Detection',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.deepPurple),
       home: const APDHome(),
     );
   }
@@ -30,22 +28,26 @@ class APDHome extends StatefulWidget {
 
 class _APDHomeState extends State<APDHome> {
   final ApdInterpreter _interpreter = ApdInterpreter();
-  bool _isReady = false;
+  String _status = 'Initializing...';
+  bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
-    _setupInterpreter();
+    _initInterpreter();
   }
 
-  Future<void> _setupInterpreter() async {
+  Future<void> _initInterpreter() async {
     try {
       await _interpreter.init();
       setState(() {
-        _isReady = true;
+        _status = 'Interpreter Ready!';
       });
     } catch (e) {
-      debugPrint("Error initializing interpreter: $e");
+      setState(() {
+        _status = 'Error: $e';
+        _hasError = true;
+      });
     }
   }
 
@@ -58,10 +60,38 @@ class _APDHomeState extends State<APDHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('APD Detection Debug')),
       body: Center(
-        child: _isReady
-            ? const Text('APD Detection App Ready!')
-            : const CircularProgressIndicator(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (!_hasError && _status == 'Initializing...')
+              const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _status,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _hasError ? Colors.red : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (_hasError)
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _hasError = false;
+                    _status = 'Retrying...';
+                  });
+                  _initInterpreter();
+                },
+                child: const Text('Retry'),
+              ),
+          ],
+        ),
       ),
     );
   }
