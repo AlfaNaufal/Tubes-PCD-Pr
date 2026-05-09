@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.pcd_tubes_helm"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -41,4 +41,12 @@ android {
 
 flutter {
     source = "../.."
+}
+dependencies {
+    implementation("com.google.guava:guava:33.5.0-android") {
+        exclude(group = "com.google.guava", module = "listenablefuture")
+    }
+    
+    implementation("androidx.concurrent:concurrent-futures:1.1.0")
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.1.0")
 }
