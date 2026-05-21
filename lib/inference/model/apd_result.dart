@@ -30,4 +30,12 @@ class ApdResult extends HiveObject {
     required this.right,
     required this.bottom,
   });
+
+  Map<String, dynamic> toMongoMap() {
+    return {
+      'label': label,
+      'confidence': confidence,
+      'bbox': {'left': left, 'top': top, 'right': right, 'bottom': bottom},
+    };
+  }
 }

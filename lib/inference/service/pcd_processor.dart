@@ -39,37 +39,35 @@ class PcdProcessor {
     return img.copyResize(image, width: size, height: size);
   }
 
-  static List<List<List<double>>> normalize(img.Image image) {
+  static List<List<List<List<int>>>> normalize(img.Image image) {
     final int size = image.width;
-    return List.generate(
+    // Perhatikan perubahan tipe data dari double ke int
+    final inner = List.generate(
       size,
       (y) => List.generate(size, (x) {
         final pixel = image.getPixel(x, y);
-        return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
+        // Kirim nilai mentah 0-255 tanpa dibagi 255.0
+        return [pixel.r.toInt(), pixel.g.toInt(), pixel.b.toInt()];
       }),
     );
+    return [inner];
   }
 
   static img.Image applyPCDFilters(img.Image image) {
-    // 1. Brightness & Contrast
-    // Tujuan: Mengatasi kondisi lapangan proyek yang seringkali backlight
-    // atau memiliki pencahayaan yang tidak merata.
-    img.Image adjusted = img.adjustColor(
-      image,
-      brightness: 1.1, // Dinaikkan 10% agar area gelap terlihat
-      contrast: 1.2, // Dinaikkan 20% agar perbedaan helm dan background tegas
-    );
-
-    // 2. Gamma Correction
-    // Tujuan: Mengangkat detail warna pada area mid-tones (bayangan)
-    // tanpa membuat area yang sudah terang menjadi over-exposed (silau).
+    img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
     img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
-
-    // 3. Gaussian Blur
-    // Tujuan: Meredam noise/bintik-bintik (salt-and-pepper) akibat ISO kamera
-    // HP yang tinggi saat memotret di tempat agak gelap.
     img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
-
     return smoothed;
+  }
+
+  static img.Image processForReport(
+    img.Image rgbImage, {
+    int targetSize = 720,
+    num rotationAngle = 90,
+  }) {
+    final resized = resize(rgbImage, targetSize);
+    final pcdProcessed = applyPCDFilters(resized);
+    final rotated = img.copyRotate(pcdProcessed, angle: rotationAngle);
+    return rotated;
   }
 }

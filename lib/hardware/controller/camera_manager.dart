@@ -38,10 +38,8 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   /// Inisialisasi kamera.
   /// Dipanggil dari [didChangeDependencies] atau [initState] pada CameraView.
   Future<void> initialize() async {
-    if (_status == CameraStatus.initializing || _status == CameraStatus.ready) {
+    if (_status == CameraStatus.initializing || _status == CameraStatus.ready)
       return;
-    }
-
     _setStatus(CameraStatus.initializing);
 
     try {
@@ -100,15 +98,16 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   /// Dipanggil saat widget unmount atau app masuk background.
   Future<void> disposeCamera() async {
     WidgetsBinding.instance.removeObserver(this);
-
     if (_controller != null) {
-      if (_controller!.value.isStreamingImages) {
-        await _controller!.stopImageStream();
+      try {
+        if (_controller!.value.isStreamingImages)
+          await _controller!.stopImageStream();
+        await _controller!.dispose();
+      } catch (e) {
+        debugPrint('Error dispose: $e');
       }
-      await _controller!.dispose();
       _controller = null;
     }
-
     _setStatus(CameraStatus.uninitialized);
   }
 
@@ -116,18 +115,13 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        // App masuk background → stop stream & dispose
-        disposeCamera();
-        break;
-      case AppLifecycleState.resumed:
-        // App kembali ke foreground → re-initialize kamera
-        initialize();
-        break;
-      default:
-        break;
+    if (state == AppLifecycleState.resumed) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (_status == CameraStatus.uninitialized) initialize();
+      });
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      disposeCamera();
     }
   }
 

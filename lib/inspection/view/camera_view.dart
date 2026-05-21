@@ -9,11 +9,9 @@ import '../../hardware/handler/camera_stream_handler.dart';
 
 import '../../inference/service/isolate_runner.dart';
 import '../../inference/model/apd_result.dart';
-
-import '../model/report_model.dart';
-import '../../supervisor/controller/dashboard_controller.dart';
-
 import '../../auth/controller/auth_controller.dart';
+import '../../supervisor/controller/dashboard_controller.dart';
+import '../../inspection/model/report_model.dart';
 
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
@@ -25,9 +23,9 @@ class CameraView extends StatefulWidget {
 class _CameraViewState extends State<CameraView> {
   late final CameraManager _cameraManager;
   late final CameraStreamHandler _streamHandler;
-
   List<ApdResult> _detectionResults = [];
   bool _isCapturing = false;
+  bool _isProcessingFrame = false;
 
   @override
   void initState() {
@@ -54,32 +52,26 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _listenToInferenceResults() {
-    // 1. Listen khusus untuk hasil jepretan laporan
-    IsolateRunner.reportStream.listen((response) {
-      if (mounted && response.capturedImageBytes != null) {
-        // Tampilkan dialog/halaman baru untuk preview laporan sebelum dikirim ke Supervisor
-        setState(() => _isCapturing = false);
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showReportPreviewDialog(
-            response.capturedImageBytes!,
-            response.results,
-          );
-        });
-      }
+    IsolateRunner.reportStream.listen((response) async {
+      if (!mounted || response.capturedImageBytes == null) return;
+      await _streamHandler.start();
+      if (mounted) setState(() => _isCapturing = false);
+      _showReportPreviewDialog(response.capturedImageBytes!, response.results);
     });
 
-    // 2. Listen stream kamera regular
     _streamHandler.imageStream.listen((image) async {
+      if (_isProcessingFrame) return;
+      _isProcessingFrame = true;
       try {
         final results = await IsolateRunner.process(image);
-        if (mounted) {
+        if (mounted && !_isCapturing) {
           setState(() => _detectionResults = results);
         }
       } catch (e) {
         debugPrint('Error: $e');
       } finally {
-        if (mounted) _streamHandler.markFrameProcessed();
+        _isProcessingFrame = false;
+        _streamHandler.markFrameProcessed();
       }
     });
   }
@@ -93,77 +85,170 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _showReportPreviewDialog(Uint8List imageBytes, List<ApdResult> results) {
-    // Hitung jumlah pelanggaran (contoh)
-    int noHelmetCount = results.where((r) => r.label == 'no_helmet').length;
+    final nameController = TextEditingController();
+    final siteController = TextEditingController();
+    final divisionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder:
           (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
+            backgroundColor: const Color(0xFF161B22),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFF30363D)),
+            ),
             title: const Text(
               'Kirim Laporan HSE',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Menampilkan gambar ber-PCD hasil jepretan
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    imageBytes,
-                    height: 200,
-                    fit: BoxFit.cover,
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 160,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(imageBytes, fit: BoxFit.cover),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: nameController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: _buildInputDecoration(
+                          'Nama Pekerja',
+                          Icons.person_outline,
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Nama tidak boleh kosong'
+                                    : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: siteController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: _buildInputDecoration(
+                          'Site / Lokasi Kerja',
+                          Icons.location_on_outlined,
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Site tidak boleh kosong'
+                                    : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: divisionController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: _buildInputDecoration(
+                          'Divisi / Vendor',
+                          Icons.business_outlined,
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Divisi tidak boleh kosong'
+                                    : null,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Terdeteksi Pekerja Tanpa Helm: $noHelmetCount',
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context), // Batal
+                onPressed: () => Navigator.pop(context),
                 child: const Text(
                   'Batal',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Color(0xFF8B949E)),
                 ),
               ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () {
-                  final auth = context.read<AuthController>();
-                  final currentUserName =
-                      auth.currentUser?.name ?? 'Petugas K3 (Unknown)';
+                  if (formKey.currentState!.validate()) {
+                    final auth = context.read<AuthController>();
 
-                  final newReport = ReportModel(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    timestamp: DateTime.now(),
-                    imageBytes: imageBytes,
-                    detections: results,
-                    inspectorName: currentUserName,
-                  );
+                    final newReport = ReportModel(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      timestamp: DateTime.now(),
+                      imageBytes: imageBytes,
+                      detections: results,
+                      inspectorName: auth.currentUser?.name ?? 'Inspector',
+                      workerName: nameController.text.trim(),
+                      site: siteController.text.trim(),
+                      division: divisionController.text.trim(),
+                    );
 
-                  context.read<DashboardController>().addReport(newReport);
+                    context.read<DashboardController>().addReport(newReport);
+                    Navigator.pop(context);
 
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Laporan tersimpan ke database offline!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Laporan berhasil disimpan offline!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
                 },
-                child: const Text('Kirim Laporan'),
+                child: const Text('Kirim'),
               ),
             ],
           ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF8B949E), fontSize: 13),
+      prefixIcon: Icon(icon, color: const Color(0xFFFFB800), size: 18),
+      filled: true,
+      fillColor: const Color(0xFF0D1117),
+      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF30363D)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFFFFB800)),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
     );
   }
 
@@ -175,16 +260,15 @@ class _CameraViewState extends State<CameraView> {
         backgroundColor: Colors.black,
         body: Consumer<CameraManager>(
           builder: (context, cam, _) {
+            if (!cam.isReady)
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.amber),
+              );
             return Stack(
               fit: StackFit.expand,
               children: [
                 _buildCameraPreview(cam),
-
-                // ── Bounding Box Overlay ─────────────────────────────
-
-                // ── Status Overlay ───────────────────────────────────
                 _buildStatusOverlay(cam),
-
                 _buildTopBar(context),
               ],
             );
@@ -196,8 +280,9 @@ class _CameraViewState extends State<CameraView> {
           onPressed:
               _isCapturing
                   ? null
-                  : () {
+                  : () async {
                     setState(() => _isCapturing = true);
+                    await Future.delayed(const Duration(milliseconds: 300));
                     IsolateRunner.captureForReport();
                   },
           child:
@@ -210,13 +295,11 @@ class _CameraViewState extends State<CameraView> {
                       strokeWidth: 3,
                     ),
                   )
-                  : Icon(Icons.camera_alt, color: Colors.black, size: 28),
+                  : const Icon(Icons.camera_alt, color: Colors.black, size: 28),
         ),
       ),
     );
   }
-
-  // ── Sub-builders ──────────────────────────────────────────────────────────
 
   Widget _buildCameraPreview(CameraManager cam) {
     if (cam.status == CameraStatus.initializing) {
@@ -265,11 +348,8 @@ class _CameraViewState extends State<CameraView> {
       );
     }
 
-    if (!cam.isReady || cam.controller == null) {
-      return const SizedBox.shrink();
-    }
+    if (!cam.isReady || cam.controller == null) return const SizedBox.shrink();
 
-    // Preview memenuhi layar (cover mode)
     return SizedBox.expand(
       child: FittedBox(
         fit: BoxFit.cover,
@@ -367,7 +447,7 @@ class _CameraViewState extends State<CameraView> {
       return Align(
         alignment: Alignment.bottomCenter,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 40),
+          margin: const EdgeInsets.only(bottom: 100),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.7),

@@ -6,7 +6,7 @@ import '../model/apd_result.dart';
 class ApdInterpreter {
   Interpreter? _interpreter;
   List<String> _labels = [];
-  double _confidenceThreshold = 0.5;
+  double _confidenceThreshold = 0.35;
 
   Future<void> init({
     required String modelPath,
@@ -14,8 +14,6 @@ class ApdInterpreter {
     required double confidenceThreshold,
   }) async {
     _confidenceThreshold = confidenceThreshold;
-
-    // Load model sebagai bytes — kompatibel dengan isolate
     final modelData = await _loadAsset(modelPath);
     _interpreter = Interpreter.fromBuffer(modelData);
 
@@ -24,7 +22,7 @@ class ApdInterpreter {
 
     final labelRaw = await _loadAssetString(labelPath);
     _labels = labelRaw.split('\n').where((e) => e.isNotEmpty).toList();
-    print('Labels: $_labels');
+    print('Labels loaded: $_labels');
   }
 
   Future<void> initFromBytes({
@@ -39,7 +37,7 @@ class ApdInterpreter {
     print('Output shape: ${_interpreter!.getOutputTensor(0).shape}');
 
     _labels = labelContent.split('\n').where((e) => e.isNotEmpty).toList();
-    print('Labels: $_labels');
+    print('Labels loaded: $_labels');
   }
 
   static Future<Uint8List> _loadAsset(String path) async {
@@ -51,51 +49,78 @@ class ApdInterpreter {
     return await rootBundle.loadString(path);
   }
 
-  List<ApdResult> run(List<List<List<double>>> input) {
-    final int rows = 30;
-    final int columns = 3549;
+  // FIX: terima 4D input [1][H][W][C]
+  List<ApdResult> run(List<List<List<List<int>>>> input) {
+    final outputTensor = _interpreter!.getOutputTensor(0);
+    final outputShape = outputTensor.shape; // [1, 30, 3549]
 
-    var output = List.filled(
-      1 * rows * columns,
-      0.0,
-    ).reshape([1, rows, columns]);
-    _interpreter!.run([input], output);
-    return _parseOutput(output, rows, columns);
+    final int rows = outputShape[1]; // 30 (4 coords + 26 classes)
+    final int cols = outputShape[2]; // 3549 anchors
+
+    // Alokasi output buffer
+    final output = List.generate(
+      1,
+      (_) => List.generate(rows, (_) => List.filled(cols, 0.0)),
+    );
+
+    _interpreter!.run(input, output);
+    return _parseOutput(output, rows, cols);
   }
 
-  List<ApdResult> _parseOutput(dynamic output, int rows, int columns) {
+  List<ApdResult> _parseOutput(
+    List<List<List<double>>> output,
+    int rows,
+    int cols,
+  ) {
     final List<ApdResult> results = [];
-    final data = output[0]; // Akses dimensi pertama
+    final data = output[0]; // shape [rows][cols]
 
-    // Loop sebanyak jumlah anchor box (3549)
-    for (int i = 0; i < columns; i++) {
-      // Di YOLOv8, index 0-3 adalah bounding box (x, y, w, h)
-      // Index 4 ke atas adalah score untuk setiap kelas.
-      // Kita cari score tertinggi dari kelas-kelas yang ada.
+    // num_classes = rows - 4
+    final int numClasses = rows - 4;
+
+    for (int i = 0; i < cols; i++) {
       double maxScore = 0;
       int labelIndex = 0;
+      if (i % 500 == 0) {
+        // Print setiap 500 anchor untuk debugging
+        print(
+          'DEBUG: Anchor $i -> xCenter: ${data[0][i]}, yCenter: ${data[1][i]}, conf: ${data[4][i]}',
+        );
+      }
+      // Hanya iterasi kelas yang ada di label file
+      final int classesToCheck =
+          numClasses < _labels.length ? numClasses : _labels.length;
 
-      // Loop untuk mencari kelas dengan confidence tertinggi
-      // Karena kita hanya punya 4 label, pastikan kita mengecek index 4 sampai 4 + _labels.length
-      int classCount = _labels.length;
-      for (int c = 4; c < 4 + classCount; c++) {
-        double score = data[c][i] as double;
+      for (int c = 0; c < classesToCheck; c++) {
+        final double score = data[4 + c][i];
         if (score > maxScore) {
           maxScore = score;
-          labelIndex = c - 4;
+          labelIndex = c;
         }
       }
 
       if (maxScore < _confidenceThreshold) continue;
+      if (maxScore > 0.5) {
+        print(
+          'DEBUG: Ditemukan deteksi! Score: $maxScore, Label Index: $labelIndex',
+        );
+      }
+      final double xCenter = data[0][i];
+      final double yCenter = data[1][i];
+      final double width = data[2][i];
+      final double height = data[3][i];
+
+      // Validasi koordinat dalam range [0,1] — koordinat YOLOv8 sudah ternormalisasi
+      if (xCenter <= 0 || yCenter <= 0 || width <= 0 || height <= 0) continue;
 
       results.add(
         ApdResult(
-          label: _labels[labelIndex],
+          label: labelIndex < _labels.length ? _labels[labelIndex] : 'unknown',
           confidence: maxScore,
-          left: data[0][i],
-          top: data[1][i],
-          right: data[2][i],
-          bottom: data[3][i],
+          left: (xCenter - width / 2).clamp(0.0, 1.0),
+          top: (yCenter - height / 2).clamp(0.0, 1.0),
+          right: (xCenter + width / 2).clamp(0.0, 1.0),
+          bottom: (yCenter + height / 2).clamp(0.0, 1.0),
         ),
       );
     }

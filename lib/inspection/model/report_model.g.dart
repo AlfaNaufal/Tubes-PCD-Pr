@@ -22,13 +22,16 @@ class ReportModelAdapter extends TypeAdapter<ReportModel> {
       imageBytes: fields[2] as Uint8List,
       detections: (fields[3] as List).cast<ApdResult>(),
       inspectorName: fields[4] as String,
+      workerName: fields[5] as String,
+      site: fields[6] as String,
+      division: fields[7] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, ReportModel obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,7 +41,13 @@ class ReportModelAdapter extends TypeAdapter<ReportModel> {
       ..writeByte(3)
       ..write(obj.detections)
       ..writeByte(4)
-      ..write(obj.inspectorName);
+      ..write(obj.inspectorName)
+      ..writeByte(5)
+      ..write(obj.workerName)
+      ..writeByte(6)
+      ..write(obj.site)
+      ..writeByte(7)
+      ..write(obj.division);
   }
 
   @override

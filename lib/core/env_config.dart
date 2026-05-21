@@ -2,10 +2,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Env {
   static double get confidenceThreshold =>
-      double.parse(dotenv.env['CONFIDENCE_THRESHOLD'] ?? '0.5');
+      double.parse(dotenv.env['CONFIDENCE_THRESHOLD'] ?? '0.35');
 
   static int get modelInputSize =>
-      int.parse(dotenv.env['MODEL_INPUT_SIZE'] ?? '320');
+      int.parse(dotenv.env['MODEL_INPUT_SIZE'] ?? '416');
 
   static double get iouThreshold =>
       double.parse(dotenv.env['IOU_THRESHOLD'] ?? '0.45');
