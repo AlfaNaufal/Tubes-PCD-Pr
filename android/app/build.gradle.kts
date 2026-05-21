@@ -38,10 +38,6 @@ flutter {
     source = "../.."
 }
 dependencies {
-    implementation("com.google.guava:guava:33.5.0-android") {
-        exclude(group = "com.google.guava", module = "listenablefuture")
-    }
-    
-    implementation("androidx.concurrent:concurrent-futures:1.1.0")
-    implementation("androidx.concurrent:concurrent-futures-ktx:1.1.0")
+    implementation("androidx.concurrent:concurrent-futures:1.2.0")
+    implementation("androidx.concurrent:concurrent-futures-ktx:1.2.0")
 }

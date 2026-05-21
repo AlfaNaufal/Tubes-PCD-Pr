@@ -1,40 +1,20 @@
-// lib/inspection/view/camera_view.dart
-
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
+import '../../core/env_config.dart';
 
 import '../../hardware/controller/camera_manager.dart';
 import '../../hardware/handler/camera_stream_handler.dart';
 
-// ── Stub types untuk integrasi dengan Role 2 & 3 ─────────────────────────────
-// Uncomment dan sesuaikan path import saat Role 2 & 3 sudah siap.
-//
-// import '../../inference/service/apd_result.dart';
-// import '../../inspection/controller/inspection_controller.dart';
-// import '../../overlay/painter/bbox_painter.dart';
+import '../../inference/service/isolate_runner.dart';
+import '../../inference/model/apd_result.dart';
 
-/// Placeholder APDResult — hapus saat Role 2 sudah punya file aslinya
-class APDResult {
-  final String label;
-  final double confidence;
-  final Rect bbox;
-  const APDResult({
-    required this.label,
-    required this.confidence,
-    required this.bbox,
-  });
-}
+import '../model/report_model.dart';
+import '../../supervisor/controller/dashboard_controller.dart';
 
-/// CameraView adalah halaman utama untuk Petugas K3.
-///
-/// Lifecycle:
-/// - [didChangeDependencies]: panggil CameraManager.initialize()
-/// - [dispose]: panggil CameraManager.disposeCamera() + StreamHandler.dispose()
-///
-/// Integrasi:
-/// - CameraStreamHandler.start() → stream ke Role 2
-/// - Hasil deteksi (List<APDResult>) → diteruskan ke BBoxPainter (Role 3)
+import '../../auth/controller/auth_controller.dart';
+
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
 
@@ -46,19 +26,14 @@ class _CameraViewState extends State<CameraView> {
   late final CameraManager _cameraManager;
   late final CameraStreamHandler _streamHandler;
 
-  // Hasil deteksi dari Role 2 (diupdate via callback/stream)
-  List<APDResult> _detectionResults = [];
+  List<ApdResult> _detectionResults = [];
+  bool _isCapturing = false;
 
   @override
   void initState() {
     super.initState();
     _cameraManager = CameraManager();
     _streamHandler = CameraStreamHandler(_cameraManager);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
     _initCamera();
   }
 
@@ -66,31 +41,130 @@ class _CameraViewState extends State<CameraView> {
     await _cameraManager.initialize();
 
     if (_cameraManager.isReady) {
+      await IsolateRunner.init(
+        modelPath: Env.modelPath,
+        labelPath: Env.labelPath,
+        modelInputSize: Env.modelInputSize,
+        confidenceThreshold: Env.confidenceThreshold,
+      );
+
       await _streamHandler.start();
       _listenToInferenceResults();
     }
   }
 
-  /// Role 2 akan expose stream atau callback hasil inference.
-  /// Uncomment dan sambungkan ke InspectionController saat Role 2 siap.
   void _listenToInferenceResults() {
-    // Contoh integrasi (aktifkan saat Role 2 siap):
-    //
-    // final inspController = context.read<InspectionController>();
-    // inspController.resultsStream.listen((results) {
-    //   if (mounted) {
-    //     setState(() => _detectionResults = results);
-    //     _streamHandler.markFrameProcessed();
-    //   }
-    // });
+    // 1. Listen khusus untuk hasil jepretan laporan
+    IsolateRunner.reportStream.listen((response) {
+      if (mounted && response.capturedImageBytes != null) {
+        // Tampilkan dialog/halaman baru untuk preview laporan sebelum dikirim ke Supervisor
+        setState(() => _isCapturing = false);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showReportPreviewDialog(
+            response.capturedImageBytes!,
+            response.results,
+          );
+        });
+      }
+    });
+
+    // 2. Listen stream kamera regular
+    _streamHandler.imageStream.listen((image) async {
+      try {
+        final results = await IsolateRunner.process(image);
+        if (mounted) {
+          setState(() => _detectionResults = results);
+        }
+      } catch (e) {
+        debugPrint('Error: $e');
+      } finally {
+        if (mounted) _streamHandler.markFrameProcessed();
+      }
+    });
   }
 
   @override
   void dispose() {
-    // FR-01: Dispose kamera dan stream saat widget unmount
+    IsolateRunner.dispose();
     _streamHandler.dispose();
     _cameraManager.dispose();
     super.dispose();
+  }
+
+  void _showReportPreviewDialog(Uint8List imageBytes, List<ApdResult> results) {
+    // Hitung jumlah pelanggaran (contoh)
+    int noHelmetCount = results.where((r) => r.label == 'no_helmet').length;
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text(
+              'Kirim Laporan HSE',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Menampilkan gambar ber-PCD hasil jepretan
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.memory(
+                    imageBytes,
+                    height: 200,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Terdeteksi Pekerja Tanpa Helm: $noHelmetCount',
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context), // Batal
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                onPressed: () {
+                  final auth = context.read<AuthController>();
+                  final currentUserName =
+                      auth.currentUser?.name ?? 'Petugas K3 (Unknown)';
+
+                  final newReport = ReportModel(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    timestamp: DateTime.now(),
+                    imageBytes: imageBytes,
+                    detections: results,
+                    inspectorName: currentUserName,
+                  );
+
+                  context.read<DashboardController>().addReport(newReport);
+
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Laporan tersimpan ke database offline!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                child: const Text('Kirim Laporan'),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -104,29 +178,39 @@ class _CameraViewState extends State<CameraView> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                // ── Camera Preview ─────────────────────────────────
                 _buildCameraPreview(cam),
 
-                // ── Bounding Box Overlay (FR-03) ───────────────────
-                // Uncomment saat Role 3 (BBoxPainter) sudah siap:
-                //
-                // if (_detectionResults.isNotEmpty && cam.previewSize != null)
-                //   CustomPaint(
-                //     painter: BBoxPainter(
-                //       results: _detectionResults,
-                //       previewSize: cam.previewSize!,
-                //       screenSize: MediaQuery.of(context).size,
-                //     ),
-                //   ),
+                // ── Bounding Box Overlay ─────────────────────────────
 
-                // ── Status Overlay ─────────────────────────────────
+                // ── Status Overlay ───────────────────────────────────
                 _buildStatusOverlay(cam),
 
-                // ── Top Bar ────────────────────────────────────────
                 _buildTopBar(context),
               ],
             );
           },
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: _isCapturing ? Colors.grey : const Color(0xFFFFB800),
+          onPressed:
+              _isCapturing
+                  ? null
+                  : () {
+                    setState(() => _isCapturing = true);
+                    IsolateRunner.captureForReport();
+                  },
+          child:
+              _isCapturing
+                  ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.black,
+                      strokeWidth: 3,
+                    ),
+                  )
+                  : Icon(Icons.camera_alt, color: Colors.black, size: 28),
         ),
       ),
     );

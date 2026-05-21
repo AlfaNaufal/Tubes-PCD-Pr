@@ -1,21 +1,20 @@
-import 'package:envied/envied.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-part 'env_config.g.dart';
+class Env {
+  static double get confidenceThreshold =>
+      double.parse(dotenv.env['CONFIDENCE_THRESHOLD'] ?? '0.5');
 
-@Envied(path: '.env')
-abstract class Env {
-  @EnviedField(varName: 'CONFIDENCE_THRESHOLD')
-  static final String confidenceThreshold = _Env.confidenceThreshold;
+  static int get modelInputSize =>
+      int.parse(dotenv.env['MODEL_INPUT_SIZE'] ?? '320');
 
-  @EnviedField(varName: 'MODEL_INPUT_SIZE')
-  static final String modelInputSize = _Env.modelInputSize;
+  static double get iouThreshold =>
+      double.parse(dotenv.env['IOU_THRESHOLD'] ?? '0.45');
 
-  @EnviedField(varName: 'MODEL_PATH')
-  static final String modelPath = _Env.modelPath;
+  static String get modelPath =>
+      dotenv.env['MODEL_PATH'] ?? 'assets/models/apd_yolov8n.tflite';
 
-  @EnviedField(varName: 'LABEL_PATH')
-  static final String labelPath = _Env.labelPath;
+  static String get labelPath =>
+      dotenv.env['LABEL_PATH'] ?? 'assets/labels/apd_labels.txt';
 
-  @EnviedField(varName: 'IOU_THRESHOLD')
-  static final String iouThreshold = _Env.iouThreshold;
+  static String get mongoUrl => dotenv.env['MONGO_URL'] ?? '';
 }
