@@ -39,15 +39,17 @@ class PcdProcessor {
     return img.copyResize(image, width: size, height: size);
   }
 
-  static List<List<List<List<int>>>> normalize(img.Image image) {
+  static List<List<List<List<double>>>> normalize(img.Image image) {
     final int size = image.width;
-    // Perhatikan perubahan tipe data dari double ke int
     final inner = List.generate(
       size,
       (y) => List.generate(size, (x) {
         final pixel = image.getPixel(x, y);
-        // Kirim nilai mentah 0-255 tanpa dibagi 255.0
-        return [pixel.r.toInt(), pixel.g.toInt(), pixel.b.toInt()];
+        return [
+          pixel.r.toDouble() / 255.0,
+          pixel.g.toDouble() / 255.0,
+          pixel.b.toDouble() / 255.0,
+        ];
       }),
     );
     return [inner];

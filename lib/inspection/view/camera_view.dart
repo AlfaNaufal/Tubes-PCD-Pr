@@ -90,6 +90,39 @@ class _CameraViewState extends State<CameraView> {
     final divisionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
+    // Hitung status APD dari results
+    print(
+      'DEBUG results: ${results.map((r) => "${r.label}:${r.confidence.toStringAsFixed(2)}").toList()}',
+    );
+
+    final human = results.any((r) => r.label == 'human' && r.confidence > 0.15);
+    final helmet = results.any(
+      (r) => r.label == 'helmet' && r.confidence > 0.15,
+    );
+    final vest = results.any((r) => r.label == 'vest' && r.confidence > 0.15);
+
+    print('DEBUG: human=$human helmet=$helmet vest=$vest');
+
+    String apdStatusLabel;
+    Color apdStatusColor;
+
+    if (!human) {
+      apdStatusLabel = 'Tidak Ada Pekerja Terdeteksi';
+      apdStatusColor = Colors.grey;
+    } else if (helmet && vest) {
+      apdStatusLabel = '✅ Helm + Rompi Lengkap';
+      apdStatusColor = Colors.green;
+    } else if (helmet && !vest) {
+      apdStatusLabel = '⚠️ Pakai Helm, Tanpa Rompi';
+      apdStatusColor = Colors.orangeAccent;
+    } else if (!helmet && vest) {
+      apdStatusLabel = '⚠️ Pakai Rompi, Tanpa Helm';
+      apdStatusColor = Colors.orange;
+    } else {
+      apdStatusLabel = '🚨 Tanpa Helm & Tanpa Rompi';
+      apdStatusColor = Colors.redAccent;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -122,6 +155,52 @@ class _CameraViewState extends State<CameraView> {
                           borderRadius: BorderRadius.circular(8),
                           child: Image.memory(imageBytes, fit: BoxFit.cover),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Status APD preview
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: apdStatusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: apdStatusColor.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Text(
+                          apdStatusLabel,
+                          style: TextStyle(
+                            color: apdStatusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Detail helm & rompi
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: helmet ? Icons.check_circle : Icons.cancel,
+                              label: helmet ? 'Helm ✓' : 'Helm ✗',
+                              color: helmet ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: vest ? Icons.check_circle : Icons.cancel,
+                              label: vest ? 'Rompi ✓' : 'Rompi ✗',
+                              color: vest ? Colors.green : Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -222,6 +301,36 @@ class _CameraViewState extends State<CameraView> {
               ),
             ],
           ),
+    );
+  }
+
+  Widget _buildApdChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

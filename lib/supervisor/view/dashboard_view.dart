@@ -9,6 +9,31 @@ import '../../inspection/model/report_model.dart';
 class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
+  Map<String, dynamic> _getApdStatus(ReportModel report) {
+    final helmet = report.helmetDetected;
+    final vest = report.vestDetected;
+    final human = report.humanDetected;
+
+    if (!human) {
+      return {'label': 'Tidak Ada Pekerja', 'color': Colors.grey};
+    }
+    if (helmet && vest) {
+      return {'label': '✅ Helm + Rompi Lengkap', 'color': Colors.green};
+    } else if (helmet && !vest) {
+      return {
+        'label': '⚠️ Pakai Helm, Tanpa Rompi',
+        'color': Colors.orangeAccent,
+      };
+    } else if (!helmet && vest) {
+      return {'label': '⚠️ Pakai Rompi, Tanpa Helm', 'color': Colors.orange};
+    } else {
+      return {
+        'label': '🚨 Tanpa Helm & Tanpa Rompi',
+        'color': Colors.redAccent,
+      };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dashboardCtrl = context.watch<DashboardController>();
@@ -47,6 +72,7 @@ class DashboardView extends StatelessWidget {
                 itemCount: reports.length,
                 itemBuilder: (context, index) {
                   final report = reports[index];
+                  final apdStatus = _getApdStatus(report);
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
@@ -56,11 +82,7 @@ class DashboardView extends StatelessWidget {
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      onTap:
-                          () => _showReportDetailDialog(
-                            context,
-                            report,
-                          ), // Buka detail laporan saat diklik
+                      onTap: () => _showReportDetailDialog(context, report),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -85,8 +107,7 @@ class DashboardView extends StatelessWidget {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      report
-                                          .workerName, // Tampilkan nama pekerja di baris utama kartu
+                                      report.workerName,
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -111,33 +132,9 @@ class DashboardView extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    if (report.detections.isEmpty)
-                                      _buildBadge(
-                                        '0 Deteksi (Blur/Gagal)',
-                                        Colors.grey,
-                                      ),
-                                    if (report.noHelmetCount > 0)
-                                      _buildBadge(
-                                        '${report.noHelmetCount} Tanpa Helm',
-                                        Colors.redAccent,
-                                      ),
-                                    if (report.noVestCount > 0)
-                                      _buildBadge(
-                                        '${report.noVestCount} Tanpa Rompi',
-                                        Colors.orangeAccent,
-                                      ),
-                                    if (report.detections.isNotEmpty &&
-                                        report.noHelmetCount == 0 &&
-                                        report.noVestCount == 0)
-                                      _buildBadge(
-                                        'Aman Sesuai Prosedur',
-                                        Colors.green,
-                                      ),
-                                  ],
+                                _buildBadge(
+                                  apdStatus['label']!,
+                                  apdStatus['color'] as Color,
                                 ),
                               ],
                             ),
@@ -152,6 +149,11 @@ class DashboardView extends StatelessWidget {
   }
 
   void _showReportDetailDialog(BuildContext context, ReportModel report) {
+    final apdStatus = _getApdStatus(report);
+    final helmet = report.helmetDetected;
+    final vest = report.vestDetected;
+    final human = report.humanDetected;
+
     showDialog(
       context: context,
       builder:
@@ -161,8 +163,6 @@ class DashboardView extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               side: const BorderSide(color: Color(0xFF30363D)),
             ),
-            // Gunakan constraints untuk membatasi tinggi agar tidak melampaui layar
-            // dan memberikan ruang untuk scroll
             insetPadding: const EdgeInsets.symmetric(
               horizontal: 20,
               vertical: 24,
@@ -175,13 +175,11 @@ class DashboardView extends StatelessWidget {
               ),
             ),
             content: SizedBox(
-              width: MediaQuery.of(context).size.width, // Ambil lebar layar
+              width: MediaQuery.of(context).size.width,
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize:
-                      MainAxisSize
-                          .min, // Penting agar Column menyesuaikan konten
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -203,7 +201,7 @@ class DashboardView extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Hasil Deteksi APD',
+                      'Status APD Pekerja',
                       style: TextStyle(
                         color: Color(0xFF8B949E),
                         fontSize: 11,
@@ -211,56 +209,54 @@ class DashboardView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (report.detections.isEmpty)
-                      const Text(
-                        'Tidak ada deteksi (frame blur/gagal)',
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                    if (!human)
+                      _buildStatusRow(
+                        Icons.person_off,
+                        'Tidak ada pekerja terdeteksi',
+                        Colors.grey,
                       )
-                    else
-                      ...report.detections.map((d) {
-                        final isViolation =
-                            d.label == 'no_helmet' || d.label == 'no_vest';
-                        final color =
-                            isViolation ? Colors.redAccent : Colors.green;
-                        final labelText =
-                            {
-                              'helmet': 'Helm ✓',
-                              'no_helmet': 'Tanpa Helm ✗',
-                              'vest': 'Rompi ✓',
-                              'no_vest': 'Tanpa Rompi ✗',
-                            }[d.label] ??
-                            d.label;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
+                    else ...[
+                      _buildStatusRow(
+                        helmet ? Icons.check_circle : Icons.cancel,
+                        helmet
+                            ? 'Helm terdeteksi ✓'
+                            : 'Helm tidak terdeteksi ✗',
+                        helmet ? Colors.green : Colors.redAccent,
+                      ),
+                      const SizedBox(height: 6),
+                      _buildStatusRow(
+                        vest ? Icons.check_circle : Icons.cancel,
+                        vest
+                            ? 'Rompi terdeteksi ✓'
+                            : 'Rompi tidak terdeteksi ✗',
+                        vest ? Colors.green : Colors.orangeAccent,
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (apdStatus['color'] as Color).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: (apdStatus['color'] as Color).withOpacity(
+                              0.4,
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: color.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          apdStatus['label']!,
+                          style: TextStyle(
+                            color: apdStatus['color'] as Color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                labelText,
-                                style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                '${(d.confidence * 100).toStringAsFixed(1)}%',
-                                style: TextStyle(color: color, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -275,6 +271,31 @@ class DashboardView extends StatelessWidget {
               ),
             ],
           ),
+    );
+  }
+
+  Widget _buildStatusRow(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

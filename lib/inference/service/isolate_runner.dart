@@ -82,13 +82,15 @@ class IsolateRunner {
       if (message is SendPort) {
         _isolateSendPort = message;
       } else if (message is IsolateResponse) {
+        _isProcessing = false; // selalu reset, termasuk capture response
+
         if (message.isCaptureResponse) {
           _reportStreamController.add(message);
         }
+
         if (_completer != null && !_completer!.isCompleted) {
           _completer!.complete(message.results);
         }
-        _isProcessing = false;
       }
     });
   }
@@ -123,6 +125,7 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
   final isolateReceivePort = ReceivePort();
   initData.mainSendPort.send(isolateReceivePort.sendPort);
   bool _shouldCaptureNext = false;
+  List<ApdResult> _lastResults = [];
 
   final interpreter = ApdInterpreter();
   await interpreter.initFromBytes(
@@ -150,7 +153,10 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
       final pcdProcessed = PcdProcessor.applyPCDFilters(resized);
 
       // FIX: normalize sekarang return 4D [1][H][W][C]
-      final normalized = PcdProcessor.normalize(pcdProcessed);
+      // final normalized = PcdProcessor.normalize(pcdProcessed);
+      final List<List<List<List<double>>>> normalized = PcdProcessor.normalize(
+        pcdProcessed,
+      );
 
       final rawResults = interpreter.run(normalized);
       final results =
@@ -161,22 +167,46 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
                 r.bottom.isFinite;
           }).toList();
 
+      _lastResults = results; // simpan hasil terakhir
+
       Uint8List? jpgBytes;
       bool isCapture = false;
 
       if (_shouldCaptureNext) {
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Proses inference ulang di frame yang sama
+        final captureResults = interpreter.run(normalized);
+        final filteredCapture =
+            captureResults.where((r) {
+              return r.left.isFinite &&
+                  r.top.isFinite &&
+                  r.right.isFinite &&
+                  r.bottom.isFinite;
+            }).toList();
+
+        // Gunakan hasil terbaik antara frame ini vs lastResults
+        final bestResults =
+            filteredCapture.isNotEmpty ? filteredCapture : _lastResults;
+
         final reportImage = PcdProcessor.processForReport(rgb);
         jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
         isCapture = true;
         _shouldCaptureNext = false;
+
+        initData.mainSendPort.send(
+          IsolateResponse(
+            results: bestResults,
+            capturedImageBytes: jpgBytes,
+            isCaptureResponse: true,
+          ),
+        );
+        continue; // skip send di bawah
       }
 
       initData.mainSendPort.send(
         IsolateResponse(
           results: results,
-          capturedImageBytes: jpgBytes,
-          isCaptureResponse: isCapture,
+          capturedImageBytes: null,
+          isCaptureResponse: false,
         ),
       );
     }
