@@ -22,7 +22,7 @@ import 'supervisor/view/dashboard_view.dart';
 // ── Stub imports — uncomment saat role lain sudah siap ───────────────────
 // import 'core/env_config.dart';                             // Role 3
 // import 'dashboard/view/history_view.dart';                // Role 4
-// import 'inspection/controller/inspection_controller.dart';// Role 2
+import 'inspection/controller/inspection_controller.dart';// Role 2
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +40,7 @@ void main() async {
   // Daftarkan adapter untuk database lokal
   Hive.registerAdapter(ApdResultAdapter());
   Hive.registerAdapter(ReportModelAdapter());
+  
 
   // Hive.registerAdapter(InspectionSessionModelAdapter());
 
@@ -50,6 +51,8 @@ void main() async {
   // ── Inisialisasi Database Controller Supervisor ───────────────────────────
   final dashboardController = DashboardController();
   await dashboardController.init(); // Buka box Hive dan muat data offline
+
+  // await Hive.openBox<ReportModel>('reports_box');
 
   // Lempar controller yang sudah siap ke dalam App
   runApp(APDGuardApp(dashboardController: dashboardController));
@@ -71,7 +74,7 @@ class APDGuardApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: dashboardController),
 
         // ── Role 2+3: Inspection (uncomment saat siap) ──────────────────────
-        // ChangeNotifierProvider(create: (_) => InspectionController()),
+        ChangeNotifierProvider(create: (_) => InspectionController()),
       ],
       child: MaterialApp(
         title: 'APD Guard',

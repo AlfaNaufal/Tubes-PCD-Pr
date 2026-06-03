@@ -11,6 +11,7 @@ import '../../inference/service/isolate_runner.dart';
 import '../../inference/model/apd_result.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../supervisor/controller/dashboard_controller.dart';
+import '../controller/inspection_controller.dart';
 import '../../inspection/model/report_model.dart';
 
 class CameraView extends StatefulWidget {
@@ -206,6 +207,9 @@ class _CameraViewState extends State<CameraView> {
                       site: siteController.text.trim(),
                       division: divisionController.text.trim(),
                     );
+
+                    Provider.of<InspectionController>(context, listen: false).onDetectionComplete(newReport);
+                    print("Berhasil menekan tombol simpan!");
 
                     context.read<DashboardController>().addReport(newReport);
                     Navigator.pop(context);

@@ -25,13 +25,14 @@ class ReportModelAdapter extends TypeAdapter<ReportModel> {
       workerName: fields[5] as String,
       site: fields[6] as String,
       division: fields[7] as String,
+      isSynced: fields[8] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, ReportModel obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class ReportModelAdapter extends TypeAdapter<ReportModel> {
       ..writeByte(6)
       ..write(obj.site)
       ..writeByte(7)
-      ..write(obj.division);
+      ..write(obj.division)
+      ..writeByte(8)
+      ..write(obj.isSynced);
   }
 
   @override
