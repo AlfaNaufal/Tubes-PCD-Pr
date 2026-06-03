@@ -225,10 +225,7 @@ class _CameraViewState extends State<CameraView> {
                           Expanded(
                             child: _buildApdChip(
                               icon: gloves ? Icons.check_circle : Icons.cancel,
-                              label:
-                                  gloves
-                                      ? 'Sarung Tangan ✓'
-                                      : 'Sarung Tangan ✗',
+                              label: gloves ? 'Gloves ✓' : 'Gloves ✗',
                               color: gloves ? Colors.green : Colors.redAccent,
                             ),
                           ),
@@ -236,30 +233,7 @@ class _CameraViewState extends State<CameraView> {
                           Expanded(
                             child: _buildApdChip(
                               icon: shoes ? Icons.check_circle : Icons.cancel,
-                              label: shoes ? 'Sepatu ✓' : 'Sepatu ✗',
-                              color: shoes ? Colors.green : Colors.redAccent,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildApdChip(
-                              icon: gloves ? Icons.check_circle : Icons.cancel,
-                              label:
-                                  gloves
-                                      ? 'Sarung Tangan ✓'
-                                      : 'Sarung Tangan ✗',
-                              color: gloves ? Colors.green : Colors.redAccent,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildApdChip(
-                              icon: shoes ? Icons.check_circle : Icons.cancel,
-                              label: shoes ? 'Sepatu ✓' : 'Sepatu ✗',
+                              label: shoes ? 'Shoes ✓' : 'Shoes ✗',
                               color: shoes ? Colors.green : Colors.redAccent,
                             ),
                           ),
