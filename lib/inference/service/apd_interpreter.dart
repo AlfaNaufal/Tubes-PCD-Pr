@@ -86,10 +86,12 @@ class ApdInterpreter {
     switch (label) {
       case 'helmet':
         if (width > 0.45 || height > 0.45) return false;
+        if (confidence < 0.50) return false; // minimum confidence
         break;
 
       case 'vest':
         if (height < 0.08) return false;
+        if (width > 0.80) return false; // vest tidak selebar frame
         break;
 
       case 'person':
