@@ -1,5 +1,7 @@
-boots
 gloves
 helmet
-human
+non-helmet
+person
+shoes
 vest
+bare-arms

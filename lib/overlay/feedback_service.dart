@@ -37,27 +37,24 @@ enum ComplianceStatus {
 extension ComplianceStatusColor on ComplianceStatus {
   /// Warna utama status bar overlay.
   Color get primaryColor => switch (this) {
-        ComplianceStatus.noDetection => const Color(0xFF546E7A),    // abu-abu
-        ComplianceStatus.compliant => const Color(0xFF00C853),       // hijau
-        ComplianceStatus.nonCompliant => const Color(0xFFD50000),    // merah
-      };
+    ComplianceStatus.noDetection => const Color(0xFF546E7A), // abu-abu
+    ComplianceStatus.compliant => const Color(0xFF00C853), // hijau
+    ComplianceStatus.nonCompliant => const Color(0xFFD50000), // merah
+  };
 
   /// Warna latar semi-transparan untuk status banner.
   Color get backgroundColor => switch (this) {
-        ComplianceStatus.noDetection =>
-          const Color(0xFF546E7A).withOpacity(0.75),
-        ComplianceStatus.compliant =>
-          const Color(0xFF00C853).withOpacity(0.80),
-        ComplianceStatus.nonCompliant =>
-          const Color(0xFFD50000).withOpacity(0.85),
-      };
+    ComplianceStatus.noDetection => const Color(0xFF546E7A).withOpacity(0.75),
+    ComplianceStatus.compliant => const Color(0xFF00C853).withOpacity(0.80),
+    ComplianceStatus.nonCompliant => const Color(0xFFD50000).withOpacity(0.85),
+  };
 
   /// Label teks singkat untuk status banner.
   String get displayText => switch (this) {
-        ComplianceStatus.noDetection => 'Menunggu Deteksi...',
-        ComplianceStatus.compliant => '✓ APD Lengkap',
-        ComplianceStatus.nonCompliant => '⚠ APD Tidak Lengkap',
-      };
+    ComplianceStatus.noDetection => 'Menunggu Deteksi...',
+    ComplianceStatus.compliant => '✓ APD Lengkap',
+    ComplianceStatus.nonCompliant => '⚠ APD Tidak Lengkap',
+  };
 }
 
 // ── Feedback Service ───────────────────────────────────────────────────────
@@ -78,11 +75,15 @@ class FeedbackService {
   ///   - Ada box dengan label non-compliant → [ComplianceStatus.nonCompliant]
   ///   - Semua box compliant → [ComplianceStatus.compliant]
   ComplianceStatus evaluate(List<MappedBox> boxes) {
-    if (boxes.isEmpty) return ComplianceStatus.noDetection;
+    if (boxes.isEmpty) {
+      return ComplianceStatus.noDetection;
+    }
 
-    final hasViolation = boxes.any(
-      (b) => ApdColorScheme.isNonCompliant(b.label),
-    );
+    final hasViolation = boxes.any((box) {
+      final label = box.label.toLowerCase();
+
+      return label == 'non-helmet' || label == 'bare-arms';
+    });
 
     return hasViolation
         ? ComplianceStatus.nonCompliant
@@ -105,7 +106,12 @@ class FeedbackService {
     _lastVibrationAt = DateTime.now();
 
     await Vibration.vibrate(
-      pattern: [0, EnvConfig.vibrationDurationMs, 100, EnvConfig.vibrationDurationMs],
+      pattern: [
+        0,
+        EnvConfig.vibrationDurationMs,
+        100,
+        EnvConfig.vibrationDurationMs,
+      ],
       intensities: [0, 200, 0, 128],
     );
   }

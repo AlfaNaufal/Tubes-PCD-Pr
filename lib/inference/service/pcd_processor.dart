@@ -36,7 +36,24 @@ class PcdProcessor {
   }
 
   static img.Image resize(img.Image image, int size) {
-    return img.copyResize(image, width: size, height: size);
+    // Letterbox: scale fit, pad sisanya dengan abu-abu
+    final scaleX = size / image.width;
+    final scaleY = size / image.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+
+    final newW = (image.width * scale).round();
+    final newH = (image.height * scale).round();
+
+    final resized = img.copyResize(image, width: newW, height: newH);
+
+    final canvas = img.Image(width: size, height: size);
+    img.fill(canvas, color: img.ColorRgb8(114, 114, 114));
+
+    final offsetX = (size - newW) ~/ 2;
+    final offsetY = (size - newH) ~/ 2;
+
+    img.compositeImage(canvas, resized, dstX: offsetX, dstY: offsetY);
+    return canvas;
   }
 
   static List<List<List<List<double>>>> normalize(img.Image image) {
@@ -55,11 +72,14 @@ class PcdProcessor {
     return [inner];
   }
 
+  // static img.Image applyPCDFilters(img.Image image) {
+  //   img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
+  //   img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
+  //   img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
+  //   return smoothed;
+  // }
   static img.Image applyPCDFilters(img.Image image) {
-    img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
-    img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
-    img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
-    return smoothed;
+    return image;
   }
 
   static img.Image processForReport(

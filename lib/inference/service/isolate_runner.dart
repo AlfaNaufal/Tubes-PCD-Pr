@@ -123,7 +123,6 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
   final isolateReceivePort = ReceivePort();
   initData.mainSendPort.send(isolateReceivePort.sendPort);
   bool _shouldCaptureNext = false;
-  List<ApdResult> _lastResults = [];
 
   final interpreter = ApdInterpreter();
   await interpreter.initFromBytes(
@@ -139,13 +138,14 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
     }
 
     if (message is FramePayload) {
+      final sw = Stopwatch()..start();
       final rgb = PcdProcessor.convertYUV420toRGB(message.cameraImage);
       if (rgb == null) {
         initData.mainSendPort.send(IsolateResponse(results: <ApdResult>[]));
         continue;
       }
-
-      final resized = PcdProcessor.resize(rgb, initData.modelInputSize);
+      final rotated = img.copyRotate(rgb, angle: 90);
+      final resized = PcdProcessor.resize(rotated, initData.modelInputSize);
 
       // PCD preprocessing
       final pcdProcessed = PcdProcessor.applyPCDFilters(resized);
@@ -165,39 +165,26 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
                 r.bottom.isFinite;
           }).toList();
 
-      _lastResults = results; // simpan hasil terakhir
-
       Uint8List? jpgBytes;
-      bool isCapture = false;
 
+      final reportImage = PcdProcessor.processForReport(rgb);
+
+      jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
       if (_shouldCaptureNext) {
-        // Proses inference ulang di frame yang sama
-        final captureResults = interpreter.run(normalized);
-        final filteredCapture =
-            captureResults.where((r) {
-              return r.left.isFinite &&
-                  r.top.isFinite &&
-                  r.right.isFinite &&
-                  r.bottom.isFinite;
-            }).toList();
-
-        // Gunakan hasil terbaik antara frame ini vs lastResults
-        final bestResults =
-            filteredCapture.isNotEmpty ? filteredCapture : _lastResults;
-
         final reportImage = PcdProcessor.processForReport(rgb);
+
         jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
-        isCapture = true;
+
         _shouldCaptureNext = false;
 
         initData.mainSendPort.send(
           IsolateResponse(
-            results: bestResults,
+            results: results,
             capturedImageBytes: jpgBytes,
             isCaptureResponse: true,
           ),
         );
-        continue; // skip send di bawah
+        continue;
       }
 
       initData.mainSendPort.send(

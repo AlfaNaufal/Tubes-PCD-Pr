@@ -18,19 +18,16 @@ class DashboardView extends StatelessWidget {
       return {'label': 'Tidak Ada Pekerja', 'color': Colors.grey};
     }
     if (helmet && vest) {
-      return {'label': '✅ Helm + Rompi Lengkap', 'color': Colors.green};
+      return {'label': '✅ Helm + Vest Lengkap', 'color': Colors.green};
     } else if (helmet && !vest) {
       return {
-        'label': '⚠️ Pakai Helm, Tanpa Rompi',
+        'label': '⚠️ Pakai Helm, Tanpa Vest',
         'color': Colors.orangeAccent,
       };
     } else if (!helmet && vest) {
-      return {'label': '⚠️ Pakai Rompi, Tanpa Helm', 'color': Colors.orange};
+      return {'label': '⚠️ Pakai Vest, Tanpa Helm', 'color': Colors.orange};
     } else {
-      return {
-        'label': '🚨 Tanpa Helm & Tanpa Rompi',
-        'color': Colors.redAccent,
-      };
+      return {'label': '🚨 Tanpa Helm & Tanpa Vest', 'color': Colors.redAccent};
     }
   }
 
@@ -226,9 +223,7 @@ class DashboardView extends StatelessWidget {
                       const SizedBox(height: 6),
                       _buildStatusRow(
                         vest ? Icons.check_circle : Icons.cancel,
-                        vest
-                            ? 'Rompi terdeteksi ✓'
-                            : 'Rompi tidak terdeteksi ✗',
+                        vest ? 'Vest terdeteksi ✓' : 'Vest tidak terdeteksi ✗',
                         vest ? Colors.green : Colors.orangeAccent,
                       ),
                       const SizedBox(height: 12),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
 import '../../core/env_config.dart';
+import 'dart:async';
 
 import '../../hardware/controller/camera_manager.dart';
 import '../../hardware/handler/camera_stream_handler.dart';
@@ -29,6 +30,8 @@ class _CameraViewState extends State<CameraView> {
   List<ApdResult> _detectionResults = [];
   bool _isCapturing = false;
   bool _isProcessingFrame = false;
+  StreamSubscription? _reportSub;
+  StreamSubscription? _frameSub;
 
   @override
   void initState() {
@@ -55,14 +58,14 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _listenToInferenceResults() {
-    IsolateRunner.reportStream.listen((response) async {
+    _reportSub = IsolateRunner.reportStream.listen((response) async {
       if (!mounted || response.capturedImageBytes == null) return;
       await _streamHandler.start();
       if (mounted) setState(() => _isCapturing = false);
       _showReportPreviewDialog(response.capturedImageBytes!, response.results);
     });
 
-    _streamHandler.imageStream.listen((image) async {
+    _frameSub = _streamHandler.imageStream.listen((image) async {
       if (_isProcessingFrame) return;
       _isProcessingFrame = true;
       try {
@@ -81,9 +84,13 @@ class _CameraViewState extends State<CameraView> {
 
   @override
   void dispose() {
+    _reportSub?.cancel();
+    _frameSub?.cancel();
+
     IsolateRunner.dispose();
     _streamHandler.dispose();
     _cameraManager.dispose();
+
     super.dispose();
   }
 
@@ -98,31 +105,33 @@ class _CameraViewState extends State<CameraView> {
       'DEBUG results: ${results.map((r) => "${r.label}:${r.confidence.toStringAsFixed(2)}").toList()}',
     );
 
-    final human = results.any((r) => r.label == 'human' && r.confidence > 0.15);
+    final person = results.any(
+      (r) => r.label == 'person' && r.confidence > 0.15,
+    );
     final helmet = results.any(
       (r) => r.label == 'helmet' && r.confidence > 0.15,
     );
     final vest = results.any((r) => r.label == 'vest' && r.confidence > 0.15);
 
-    print('DEBUG: human=$human helmet=$helmet vest=$vest');
+    print('DEBUG: person=$person helmet=$helmet vest=$vest');
 
     String apdStatusLabel;
     Color apdStatusColor;
 
-    if (!human) {
+    if (!person) {
       apdStatusLabel = 'Tidak Ada Pekerja Terdeteksi';
       apdStatusColor = Colors.grey;
     } else if (helmet && vest) {
-      apdStatusLabel = '✅ Helm + Rompi Lengkap';
+      apdStatusLabel = '✅ Helm + Vest Lengkap';
       apdStatusColor = Colors.green;
     } else if (helmet && !vest) {
-      apdStatusLabel = '⚠️ Pakai Helm, Tanpa Rompi';
+      apdStatusLabel = '⚠️ Pakai Helm, Tanpa Vest';
       apdStatusColor = Colors.orangeAccent;
     } else if (!helmet && vest) {
-      apdStatusLabel = '⚠️ Pakai Rompi, Tanpa Helm';
+      apdStatusLabel = '⚠️ Pakai Vest, Tanpa Helm';
       apdStatusColor = Colors.orange;
     } else {
-      apdStatusLabel = '🚨 Tanpa Helm & Tanpa Rompi';
+      apdStatusLabel = '🚨 Tanpa Helm & Tanpa Vest';
       apdStatusColor = Colors.redAccent;
     }
 
@@ -185,7 +194,7 @@ class _CameraViewState extends State<CameraView> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Detail helm & rompi
+                      // Detail helm & Vest
                       Row(
                         children: [
                           Expanded(
@@ -199,7 +208,7 @@ class _CameraViewState extends State<CameraView> {
                           Expanded(
                             child: _buildApdChip(
                               icon: vest ? Icons.check_circle : Icons.cancel,
-                              label: vest ? 'Rompi ✓' : 'Rompi ✗',
+                              label: vest ? 'Vest ✓' : 'Vest ✗',
                               color: vest ? Colors.green : Colors.orangeAccent,
                             ),
                           ),
@@ -376,6 +385,9 @@ class _CameraViewState extends State<CameraView> {
               return const Center(
                 child: CircularProgressIndicator(color: Colors.amber),
               );
+            final screen = MediaQuery.of(context).size;
+
+            debugPrint('SCREEN = ${screen.width} x ${screen.height}');
             return ChangeNotifierProvider(
               create: (_) => OverlayController()..startListening(),
               child: Stack(
@@ -471,6 +483,14 @@ class _CameraViewState extends State<CameraView> {
 
     if (!cam.isReady || cam.controller == null) return const SizedBox.shrink();
 
+    final preview = cam.controller!.value.previewSize!;
+
+    debugPrint('CAMERA PREVIEW RAW = ${preview.width} x ${preview.height}');
+
+    debugPrint(
+      'CAMERA PREVIEW ROTATED = '
+      '${preview.height} x ${preview.width}',
+    );
     return SizedBox.expand(
       child: FittedBox(
         fit: BoxFit.cover,
