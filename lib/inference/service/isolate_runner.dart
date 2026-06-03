@@ -82,11 +82,9 @@ class IsolateRunner {
       if (message is SendPort) {
         _isolateSendPort = message;
       } else if (message is IsolateResponse) {
-        _isProcessing = false; // selalu reset, termasuk capture response
+        _isProcessing = false;
 
-        if (message.isCaptureResponse) {
-          _reportStreamController.add(message);
-        }
+        _reportStreamController.add(message);
 
         if (_completer != null && !_completer!.isCompleted) {
           _completer!.complete(message.results);

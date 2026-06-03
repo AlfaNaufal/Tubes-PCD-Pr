@@ -1,6 +1,3 @@
-// lib/core/env_config.dart
-//
-// Centralized environment configuration.
 // Single source of truth untuk semua konstanta runtime aplikasi.
 //
 // Cara pakai:
@@ -9,57 +6,41 @@
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-/// Konstanta fallback — digunakan saat .env tidak tersedia (unit test / CI).
-const _kDefaultConfidenceThreshold = 0.5;
-const _kDefaultIouThreshold = 0.45;
-const _kDefaultModelInputSize = 320;
-const _kDefaultModelPath = 'assets/models/apd_yolov8n.tflite';
-const _kDefaultLabelPath = 'assets/labels/apd_labels.txt';
+const double _kDefaultConfidenceThreshold = 0.5;
+const double _kDefaultIouThreshold = 0.45;
+const int _kDefaultModelInputSize = 320;
+
+const String _kDefaultModelPath = 'assets/models/apd_yolov8n.tflite';
+
+const String _kDefaultLabelPath = 'assets/labels/apd_labels.txt';
 
 class EnvConfig {
-  // Konstruktor privat — class ini hanya berisi static members.
   EnvConfig._();
 
   // ── AI / Model ────────────────────────────────────────────────────────────
 
   /// Minimum confidence score agar deteksi dianggap valid.
-  static double get confidenceThreshold => _parseDouble(
-        'CONFIDENCE_THRESHOLD',
-        _kDefaultConfidenceThreshold,
-      );
+  static double get confidenceThreshold =>
+      _parseDouble('CONFIDENCE_THRESHOLD', _kDefaultConfidenceThreshold);
 
   /// Threshold IoU untuk Non-Maximum Suppression.
-  static double get iouThreshold => _parseDouble(
-        'IOU_THRESHOLD',
-        _kDefaultIouThreshold,
-      );
+  static double get iouThreshold =>
+      _parseDouble('IOU_THRESHOLD', _kDefaultIouThreshold);
 
   /// Resolusi input model (width = height karena square).
-  static int get modelInputSize => _parseInt(
-        'MODEL_INPUT_SIZE',
-        _kDefaultModelInputSize,
-      );
+  static int get modelInputSize =>
+      _parseInt('MODEL_INPUT_SIZE', _kDefaultModelInputSize);
 
   /// Path asset model TFLite.
-class Env {
-  static double get confidenceThreshold =>
-      double.parse(dotenv.env['CONFIDENCE_THRESHOLD'] ?? '0.25');
+  static String get modelPath => dotenv.env['MODEL_PATH'] ?? _kDefaultModelPath;
 
-  static int get modelInputSize =>
-      int.parse(dotenv.env['MODEL_INPUT_SIZE'] ?? '416');
+  /// Path asset label model.
+  static String get labelPath => dotenv.env['LABEL_PATH'] ?? _kDefaultLabelPath;
 
-  static double get iouThreshold =>
-      double.parse(dotenv.env['IOU_THRESHOLD'] ?? '0.45');
-
-  static String get modelPath =>
-      dotenv.env['MODEL_PATH'] ?? 'assets/models/apd_yolov8n.tflite';
-
-  static String get labelPath =>
-      dotenv.env['LABEL_PATH'] ?? 'assets/labels/apd_labels.txt';
-
+  /// MongoDB URL.
   static String get mongoUrl => dotenv.env['MONGO_URL'] ?? '';
 
-  // ── Overlay (Role 3) ──────────────────────────────────────────────────────
+  // ── Overlay ──────────────────────────────────────────────────────
 
   /// Durasi feedback vibrasi dalam milidetik.
   static int get vibrationDurationMs => _parseInt('VIBRATION_DURATION_MS', 300);
@@ -73,12 +54,14 @@ class Env {
   static double _parseDouble(String key, double fallback) {
     final raw = dotenv.env[key];
     if (raw == null) return fallback;
+
     return double.tryParse(raw) ?? fallback;
   }
 
   static int _parseInt(String key, int fallback) {
     final raw = dotenv.env[key];
     if (raw == null) return fallback;
+
     return int.tryParse(raw) ?? fallback;
   }
 }

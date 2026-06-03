@@ -13,6 +13,9 @@ import '../../auth/controller/auth_controller.dart';
 import '../../supervisor/controller/dashboard_controller.dart';
 import '../../inspection/model/report_model.dart';
 
+import '../../overlay/overlay_controller.dart';
+import '../../overlay/apd_overlay_widget.dart';
+
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
 
@@ -40,10 +43,10 @@ class _CameraViewState extends State<CameraView> {
 
     if (_cameraManager.isReady) {
       await IsolateRunner.init(
-        modelPath: Env.modelPath,
-        labelPath: Env.labelPath,
-        modelInputSize: Env.modelInputSize,
-        confidenceThreshold: Env.confidenceThreshold,
+        modelPath: EnvConfig.modelPath,
+        labelPath: EnvConfig.labelPath,
+        modelInputSize: EnvConfig.modelInputSize,
+        confidenceThreshold: EnvConfig.confidenceThreshold,
       );
 
       await _streamHandler.start();
@@ -373,13 +376,22 @@ class _CameraViewState extends State<CameraView> {
               return const Center(
                 child: CircularProgressIndicator(color: Colors.amber),
               );
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                _buildCameraPreview(cam),
-                _buildStatusOverlay(cam),
-                _buildTopBar(context),
-              ],
+            return ChangeNotifierProvider(
+              create: (_) => OverlayController()..startListening(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildCameraPreview(cam),
+
+                  ApdOverlayWidget(
+                    cameraManager: _cameraManager,
+                    showDebugInfo: true,
+                  ),
+
+                  _buildStatusOverlay(cam),
+                  _buildTopBar(context),
+                ],
+              ),
             );
           },
         ),
