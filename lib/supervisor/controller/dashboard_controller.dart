@@ -18,11 +18,12 @@ class DashboardController extends ChangeNotifier {
   }
 
   Future<void> addReport(ReportModel report) async {
+    print(
+      'DEBUG addReport: ${report.workerName} helmet=${report.helmetDetected} vest=${report.vestDetected}',
+    );
     final box = Hive.box<ReportModel>(boxName);
-
     await box.put(report.id, report);
     _reports.insert(0, report);
-
     notifyListeners();
   }
 }

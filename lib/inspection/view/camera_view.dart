@@ -112,26 +112,31 @@ class _CameraViewState extends State<CameraView> {
       (r) => r.label == 'helmet' && r.confidence > 0.15,
     );
     final vest = results.any((r) => r.label == 'vest' && r.confidence > 0.15);
+    final gloves = results.any(
+      (r) => r.label == 'gloves' && r.confidence > 0.15,
+    );
+    final shoes = results.any((r) => r.label == 'shoes' && r.confidence > 0.15);
 
     print('DEBUG: person=$person helmet=$helmet vest=$vest');
 
     String apdStatusLabel;
     Color apdStatusColor;
 
+    final completeApd = helmet && vest && gloves && shoes;
+    final missing = <String>[];
+    if (!helmet) missing.add('Helm');
+    if (!vest) missing.add('Vest');
+    if (!gloves) missing.add('Sarung Tangan');
+    if (!shoes) missing.add('Sepatu');
+
     if (!person) {
       apdStatusLabel = 'Tidak Ada Pekerja Terdeteksi';
       apdStatusColor = Colors.grey;
-    } else if (helmet && vest) {
-      apdStatusLabel = '✅ Helm + Vest Lengkap';
+    } else if (completeApd) {
+      apdStatusLabel = '✅ APD Lengkap';
       apdStatusColor = Colors.green;
-    } else if (helmet && !vest) {
-      apdStatusLabel = '⚠️ Pakai Helm, Tanpa Vest';
-      apdStatusColor = Colors.orangeAccent;
-    } else if (!helmet && vest) {
-      apdStatusLabel = '⚠️ Pakai Vest, Tanpa Helm';
-      apdStatusColor = Colors.orange;
     } else {
-      apdStatusLabel = '🚨 Tanpa Helm & Tanpa Vest';
+      apdStatusLabel = '🚨 Tidak Pakai: ${missing.join(', ')}';
       apdStatusColor = Colors.redAccent;
     }
 
@@ -210,6 +215,52 @@ class _CameraViewState extends State<CameraView> {
                               icon: vest ? Icons.check_circle : Icons.cancel,
                               label: vest ? 'Vest ✓' : 'Vest ✗',
                               color: vest ? Colors.green : Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: gloves ? Icons.check_circle : Icons.cancel,
+                              label:
+                                  gloves
+                                      ? 'Sarung Tangan ✓'
+                                      : 'Sarung Tangan ✗',
+                              color: gloves ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: shoes ? Icons.check_circle : Icons.cancel,
+                              label: shoes ? 'Sepatu ✓' : 'Sepatu ✗',
+                              color: shoes ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: gloves ? Icons.check_circle : Icons.cancel,
+                              label:
+                                  gloves
+                                      ? 'Sarung Tangan ✓'
+                                      : 'Sarung Tangan ✗',
+                              color: gloves ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: shoes ? Icons.check_circle : Icons.cancel,
+                              label: shoes ? 'Sepatu ✓' : 'Sepatu ✗',
+                              color: shoes ? Colors.green : Colors.redAccent,
                             ),
                           ),
                         ],

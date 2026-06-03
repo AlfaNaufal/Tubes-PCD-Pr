@@ -10,25 +10,23 @@ class DashboardView extends StatelessWidget {
   const DashboardView({super.key});
 
   Map<String, dynamic> _getApdStatus(ReportModel report) {
-    final helmet = report.helmetDetected;
-    final vest = report.vestDetected;
-    final human = report.humanDetected;
-
-    if (!human) {
+    if (!report.humanDetected) {
       return {'label': 'Tidak Ada Pekerja', 'color': Colors.grey};
     }
-    if (helmet && vest) {
-      return {'label': '✅ Helm + Vest Lengkap', 'color': Colors.green};
-    } else if (helmet && !vest) {
-      return {
-        'label': '⚠️ Pakai Helm, Tanpa Vest',
-        'color': Colors.orangeAccent,
-      };
-    } else if (!helmet && vest) {
-      return {'label': '⚠️ Pakai Vest, Tanpa Helm', 'color': Colors.orange};
-    } else {
-      return {'label': '🚨 Tanpa Helm & Tanpa Vest', 'color': Colors.redAccent};
+
+    final missing = <String>[];
+    if (!report.helmetDetected) missing.add('Helm');
+    if (!report.vestDetected) missing.add('Vest');
+    if (!report.glovesDetected) missing.add('Sarung Tangan');
+    if (!report.shoesDetected) missing.add('Sepatu');
+
+    if (missing.isEmpty) {
+      return {'label': '✅ APD Lengkap', 'color': Colors.green};
     }
+    return {
+      'label': '🚨 Tidak Pakai: ${missing.join(', ')}',
+      'color': Colors.redAccent,
+    };
   }
 
   @override
@@ -225,6 +223,26 @@ class DashboardView extends StatelessWidget {
                         vest ? Icons.check_circle : Icons.cancel,
                         vest ? 'Vest terdeteksi ✓' : 'Vest tidak terdeteksi ✗',
                         vest ? Colors.green : Colors.orangeAccent,
+                      ),
+                      const SizedBox(height: 6),
+                      _buildStatusRow(
+                        report.glovesDetected
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                        report.glovesDetected
+                            ? 'Sarung Tangan terdeteksi ✓'
+                            : 'Sarung Tangan tidak terdeteksi ✗',
+                        report.glovesDetected ? Colors.green : Colors.redAccent,
+                      ),
+                      const SizedBox(height: 6),
+                      _buildStatusRow(
+                        report.shoesDetected
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                        report.shoesDetected
+                            ? 'Sepatu terdeteksi ✓'
+                            : 'Sepatu tidak terdeteksi ✗',
+                        report.shoesDetected ? Colors.green : Colors.redAccent,
                       ),
                       const SizedBox(height: 12),
                       Container(
