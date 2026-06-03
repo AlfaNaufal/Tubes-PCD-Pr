@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
 import '../../core/env_config.dart';
+import 'dart:async';
 
 import '../../hardware/controller/camera_manager.dart';
 import '../../hardware/handler/camera_stream_handler.dart';
@@ -13,6 +14,9 @@ import '../../auth/controller/auth_controller.dart';
 import '../../supervisor/controller/dashboard_controller.dart';
 import '../controller/inspection_controller.dart';
 import '../../inspection/model/report_model.dart';
+
+import '../../overlay/overlay_controller.dart';
+import '../../overlay/apd_overlay_widget.dart';
 
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
@@ -27,6 +31,8 @@ class _CameraViewState extends State<CameraView> {
   List<ApdResult> _detectionResults = [];
   bool _isCapturing = false;
   bool _isProcessingFrame = false;
+  StreamSubscription? _reportSub;
+  StreamSubscription? _frameSub;
 
   @override
   void initState() {
@@ -41,10 +47,10 @@ class _CameraViewState extends State<CameraView> {
 
     if (_cameraManager.isReady) {
       await IsolateRunner.init(
-        modelPath: Env.modelPath,
-        labelPath: Env.labelPath,
-        modelInputSize: Env.modelInputSize,
-        confidenceThreshold: Env.confidenceThreshold,
+        modelPath: EnvConfig.modelPath,
+        labelPath: EnvConfig.labelPath,
+        modelInputSize: EnvConfig.modelInputSize,
+        confidenceThreshold: EnvConfig.confidenceThreshold,
       );
 
       await _streamHandler.start();
@@ -53,14 +59,14 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _listenToInferenceResults() {
-    IsolateRunner.reportStream.listen((response) async {
+    _reportSub = IsolateRunner.reportStream.listen((response) async {
       if (!mounted || response.capturedImageBytes == null) return;
       await _streamHandler.start();
       if (mounted) setState(() => _isCapturing = false);
       _showReportPreviewDialog(response.capturedImageBytes!, response.results);
     });
 
-    _streamHandler.imageStream.listen((image) async {
+    _frameSub = _streamHandler.imageStream.listen((image) async {
       if (_isProcessingFrame) return;
       _isProcessingFrame = true;
       try {
@@ -79,9 +85,13 @@ class _CameraViewState extends State<CameraView> {
 
   @override
   void dispose() {
+    _reportSub?.cancel();
+    _frameSub?.cancel();
+
     IsolateRunner.dispose();
     _streamHandler.dispose();
     _cameraManager.dispose();
+
     super.dispose();
   }
 
@@ -90,6 +100,46 @@ class _CameraViewState extends State<CameraView> {
     final siteController = TextEditingController();
     final divisionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+
+    // Hitung status APD dari results
+    print(
+      'DEBUG results: ${results.map((r) => "${r.label}:${r.confidence.toStringAsFixed(2)}").toList()}',
+    );
+
+    final person = results.any(
+      (r) => r.label == 'person' && r.confidence > 0.15,
+    );
+    final helmet = results.any(
+      (r) => r.label == 'helmet' && r.confidence > 0.15,
+    );
+    final vest = results.any((r) => r.label == 'vest' && r.confidence > 0.15);
+    final gloves = results.any(
+      (r) => r.label == 'gloves' && r.confidence > 0.15,
+    );
+    final shoes = results.any((r) => r.label == 'shoes' && r.confidence > 0.15);
+
+    print('DEBUG: person=$person helmet=$helmet vest=$vest');
+
+    String apdStatusLabel;
+    Color apdStatusColor;
+
+    final completeApd = helmet && vest && gloves && shoes;
+    final missing = <String>[];
+    if (!helmet) missing.add('Helm');
+    if (!vest) missing.add('Vest');
+    if (!gloves) missing.add('Sarung Tangan');
+    if (!shoes) missing.add('Sepatu');
+
+    if (!person) {
+      apdStatusLabel = 'Tidak Ada Pekerja Terdeteksi';
+      apdStatusColor = Colors.grey;
+    } else if (completeApd) {
+      apdStatusLabel = '✅ APD Lengkap';
+      apdStatusColor = Colors.green;
+    } else {
+      apdStatusLabel = '🚨 Tidak Pakai: ${missing.join(', ')}';
+      apdStatusColor = Colors.redAccent;
+    }
 
     showDialog(
       context: context,
@@ -123,6 +173,98 @@ class _CameraViewState extends State<CameraView> {
                           borderRadius: BorderRadius.circular(8),
                           child: Image.memory(imageBytes, fit: BoxFit.cover),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Status APD preview
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: apdStatusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: apdStatusColor.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Text(
+                          apdStatusLabel,
+                          style: TextStyle(
+                            color: apdStatusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Detail helm & Vest
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: helmet ? Icons.check_circle : Icons.cancel,
+                              label: helmet ? 'Helm ✓' : 'Helm ✗',
+                              color: helmet ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: vest ? Icons.check_circle : Icons.cancel,
+                              label: vest ? 'Vest ✓' : 'Vest ✗',
+                              color: vest ? Colors.green : Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: gloves ? Icons.check_circle : Icons.cancel,
+                              label:
+                                  gloves
+                                      ? 'Sarung Tangan ✓'
+                                      : 'Sarung Tangan ✗',
+                              color: gloves ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: shoes ? Icons.check_circle : Icons.cancel,
+                              label: shoes ? 'Sepatu ✓' : 'Sepatu ✗',
+                              color: shoes ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: gloves ? Icons.check_circle : Icons.cancel,
+                              label:
+                                  gloves
+                                      ? 'Sarung Tangan ✓'
+                                      : 'Sarung Tangan ✗',
+                              color: gloves ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: shoes ? Icons.check_circle : Icons.cancel,
+                              label: shoes ? 'Sepatu ✓' : 'Sepatu ✗',
+                              color: shoes ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -229,6 +371,36 @@ class _CameraViewState extends State<CameraView> {
     );
   }
 
+  Widget _buildApdChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   InputDecoration _buildInputDecoration(String hint, IconData icon) {
     return InputDecoration(
       hintText: hint,
@@ -268,13 +440,25 @@ class _CameraViewState extends State<CameraView> {
               return const Center(
                 child: CircularProgressIndicator(color: Colors.amber),
               );
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                _buildCameraPreview(cam),
-                _buildStatusOverlay(cam),
-                _buildTopBar(context),
-              ],
+            final screen = MediaQuery.of(context).size;
+
+            debugPrint('SCREEN = ${screen.width} x ${screen.height}');
+            return ChangeNotifierProvider(
+              create: (_) => OverlayController()..startListening(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildCameraPreview(cam),
+
+                  ApdOverlayWidget(
+                    cameraManager: _cameraManager,
+                    showDebugInfo: true,
+                  ),
+
+                  _buildStatusOverlay(cam),
+                  _buildTopBar(context),
+                ],
+              ),
             );
           },
         ),
@@ -354,6 +538,14 @@ class _CameraViewState extends State<CameraView> {
 
     if (!cam.isReady || cam.controller == null) return const SizedBox.shrink();
 
+    final preview = cam.controller!.value.previewSize!;
+
+    debugPrint('CAMERA PREVIEW RAW = ${preview.width} x ${preview.height}');
+
+    debugPrint(
+      'CAMERA PREVIEW ROTATED = '
+      '${preview.height} x ${preview.width}',
+    );
     return SizedBox.expand(
       child: FittedBox(
         fit: BoxFit.cover,

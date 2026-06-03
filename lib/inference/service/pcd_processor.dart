@@ -36,28 +36,50 @@ class PcdProcessor {
   }
 
   static img.Image resize(img.Image image, int size) {
-    return img.copyResize(image, width: size, height: size);
+    // Letterbox: scale fit, pad sisanya dengan abu-abu
+    final scaleX = size / image.width;
+    final scaleY = size / image.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+
+    final newW = (image.width * scale).round();
+    final newH = (image.height * scale).round();
+
+    final resized = img.copyResize(image, width: newW, height: newH);
+
+    final canvas = img.Image(width: size, height: size);
+    img.fill(canvas, color: img.ColorRgb8(114, 114, 114));
+
+    final offsetX = (size - newW) ~/ 2;
+    final offsetY = (size - newH) ~/ 2;
+
+    img.compositeImage(canvas, resized, dstX: offsetX, dstY: offsetY);
+    return canvas;
   }
 
-  static List<List<List<List<int>>>> normalize(img.Image image) {
+  static List<List<List<List<double>>>> normalize(img.Image image) {
     final int size = image.width;
-    // Perhatikan perubahan tipe data dari double ke int
     final inner = List.generate(
       size,
       (y) => List.generate(size, (x) {
         final pixel = image.getPixel(x, y);
-        // Kirim nilai mentah 0-255 tanpa dibagi 255.0
-        return [pixel.r.toInt(), pixel.g.toInt(), pixel.b.toInt()];
+        return [
+          pixel.r.toDouble() / 255.0,
+          pixel.g.toDouble() / 255.0,
+          pixel.b.toDouble() / 255.0,
+        ];
       }),
     );
     return [inner];
   }
 
+  // static img.Image applyPCDFilters(img.Image image) {
+  //   img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
+  //   img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
+  //   img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
+  //   return smoothed;
+  // }
   static img.Image applyPCDFilters(img.Image image) {
-    img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
-    img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
-    img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
-    return smoothed;
+    return image;
   }
 
   static img.Image processForReport(

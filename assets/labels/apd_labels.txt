@@ -1,1 +1,7 @@
-helmet, no_helmet, vest, no_vest
+gloves
+helmet
+non-helmet
+person
+shoes
+vest
+bare-arms

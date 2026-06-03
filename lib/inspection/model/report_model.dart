@@ -45,9 +45,38 @@ class ReportModel extends HiveObject {
     this.isSynced = false,
   });
 
-  int get noHelmetCount =>
-      detections.where((r) => r.label == 'no_helmet').length;
-  int get noVestCount => detections.where((r) => r.label == 'no_vest').length;
+  // Dataset: boots, gloves, helmet, human, vest
+  // Tidak ada kelas no_helmet/no_vest — pelanggaran = tidak terdeteksi helm/vest
+  bool get helmetDetected =>
+      detections.any((r) => r.label == 'helmet' && r.confidence > 0.15);
+
+  bool get vestDetected =>
+      detections.any((r) => r.label == 'vest' && r.confidence > 0.15);
+
+  bool get humanDetected =>
+      detections.any((r) => r.label == 'person' && r.confidence > 0.15);
+
+  bool get glovesDetected =>
+      detections.any((r) => r.label == 'gloves' && r.confidence > 0.15);
+
+  bool get shoesDetected =>
+      detections.any((r) => r.label == 'shoes' && r.confidence > 0.15);
+  // Pelanggaran: ada manusia tapi tidak ada helm
+  bool get noHelmetViolation => humanDetected && !helmetDetected;
+
+  // Pelanggaran: ada manusia tapi tidak ada rompi
+  bool get noVestViolation => humanDetected && !vestDetected;
+
+  // Pelanggaran: ada manusia tapi tidak ada sarung tangan
+  bool get noGlovesViolation => humanDetected && !glovesDetected;
+
+  // Pelanggaran: ada manusia tapi tidak ada sepatu
+  bool get noShoesViolation => humanDetected && !shoesDetected;
+
+  int get noGlovesCount => noGlovesViolation ? 1 : 0;
+  int get noShoesCount => noShoesViolation ? 1 : 0;
+  int get noHelmetCount => noHelmetViolation ? 1 : 0;
+  int get noVestCount => noVestViolation ? 1 : 0;
 
   Map<String, dynamic> toMongoMap({
     required String userId,
@@ -61,7 +90,8 @@ class ReportModel extends HiveObject {
       'division': division,
       'timestamp': timestamp.toIso8601String(),
       'image_url': imageUrl,
-      'total_violations': noHelmetCount + noVestCount,
+      'total_violations':
+          noHelmetCount + noVestCount + noGlovesCount + noShoesCount,
       'detections': detections.map((d) => d.toMongoMap()).toList(),
     };
   }

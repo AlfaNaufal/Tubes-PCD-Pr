@@ -82,13 +82,13 @@ class IsolateRunner {
       if (message is SendPort) {
         _isolateSendPort = message;
       } else if (message is IsolateResponse) {
-        if (message.isCaptureResponse) {
-          _reportStreamController.add(message);
-        }
+        _isProcessing = false;
+
+        _reportStreamController.add(message);
+
         if (_completer != null && !_completer!.isCompleted) {
           _completer!.complete(message.results);
         }
-        _isProcessing = false;
       }
     });
   }
@@ -138,19 +138,23 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
     }
 
     if (message is FramePayload) {
+      final sw = Stopwatch()..start();
       final rgb = PcdProcessor.convertYUV420toRGB(message.cameraImage);
       if (rgb == null) {
         initData.mainSendPort.send(IsolateResponse(results: <ApdResult>[]));
         continue;
       }
-
-      final resized = PcdProcessor.resize(rgb, initData.modelInputSize);
+      final rotated = img.copyRotate(rgb, angle: 90);
+      final resized = PcdProcessor.resize(rotated, initData.modelInputSize);
 
       // PCD preprocessing
       final pcdProcessed = PcdProcessor.applyPCDFilters(resized);
 
       // FIX: normalize sekarang return 4D [1][H][W][C]
-      final normalized = PcdProcessor.normalize(pcdProcessed);
+      // final normalized = PcdProcessor.normalize(pcdProcessed);
+      final List<List<List<List<double>>>> normalized = PcdProcessor.normalize(
+        pcdProcessed,
+      );
 
       final rawResults = interpreter.run(normalized);
       final results =
@@ -162,21 +166,32 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
           }).toList();
 
       Uint8List? jpgBytes;
-      bool isCapture = false;
 
+      final reportImage = PcdProcessor.processForReport(rgb);
+
+      jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
       if (_shouldCaptureNext) {
-        await Future.delayed(const Duration(milliseconds: 100));
         final reportImage = PcdProcessor.processForReport(rgb);
+
         jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
-        isCapture = true;
+
         _shouldCaptureNext = false;
+
+        initData.mainSendPort.send(
+          IsolateResponse(
+            results: results,
+            capturedImageBytes: jpgBytes,
+            isCaptureResponse: true,
+          ),
+        );
+        continue;
       }
 
       initData.mainSendPort.send(
         IsolateResponse(
           results: results,
-          capturedImageBytes: jpgBytes,
-          isCaptureResponse: isCapture,
+          capturedImageBytes: null,
+          isCaptureResponse: false,
         ),
       );
     }
