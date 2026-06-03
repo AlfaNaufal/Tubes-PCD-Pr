@@ -25,6 +25,7 @@
 
 import 'package:flutter/widgets.dart';
 import '../inference/model/apd_result.dart';
+import 'dart:math' as math;
 
 /// Hasil konversi: bounding box dalam koordinat layar + metadata asli.
 class MappedBox {
@@ -63,15 +64,42 @@ class CoordinateMapper {
     required List<ApdResult> results,
     required Size previewSize,
     required Size widgetSize,
+    int modelInputSize = 640,
   }) {
     if (results.isEmpty) return const [];
 
-    // Hitung scale & offset untuk letterboxing sekali saja (efisien).
     final transform = _computeTransform(previewSize, widgetSize);
 
+    // Hitung letterbox padding dari model input
+    final double scaleToModel = math.min(
+      modelInputSize / previewSize.width,
+      modelInputSize / previewSize.height,
+    );
+    final double scaledW = previewSize.width * scaleToModel;
+    final double scaledH = previewSize.height * scaleToModel;
+    final double padX = (modelInputSize - scaledW) / 2 / modelInputSize;
+    final double padY = (modelInputSize - scaledH) / 2 / modelInputSize;
+    final double normScaleX = scaledW / modelInputSize;
+    final double normScaleY = scaledH / modelInputSize;
+
+    print(
+      'padX=$padX padY=$padY normScaleX=$normScaleX normScaleY=$normScaleY',
+    );
+
     return results
-        .map((r) => _mapSingle(r, transform, widgetSize))
-        .whereType<MappedBox>() // buang null (box di luar layar)
+        .map(
+          (r) => _mapSingle(
+            r,
+            transform,
+            previewSize,
+            widgetSize,
+            padX,
+            padY,
+            normScaleX,
+            normScaleY,
+          ),
+        )
+        .whereType<MappedBox>()
         .toList(growable: false);
   }
 
@@ -82,24 +110,16 @@ class CoordinateMapper {
   /// Strategi: BoxFit.contain — preview kamera di-fit ke dalam widget
   /// dengan mempertahankan aspect ratio (tidak crop, tidak stretch).
   static _Transform _computeTransform(Size preview, Size widget) {
-    final previewAspect = preview.width / preview.height;
-    final widgetAspect = widget.width / widget.height;
+    final scale = math.min(
+      widget.width / preview.width,
+      widget.height / preview.height,
+    );
 
-    double scale;
-    double offsetX;
-    double offsetY;
+    final scaledWidth = preview.width * scale;
+    final scaledHeight = preview.height * scale;
 
-    if (previewAspect > widgetAspect) {
-      // Preview lebih lebar → letterbox atas-bawah (pillar box vertikal)
-      scale = widget.width / preview.width;
-      offsetX = 0;
-      offsetY = (widget.height - preview.height * scale) / 2;
-    } else {
-      // Preview lebih tinggi → letterbox kiri-kanan
-      scale = widget.height / preview.height;
-      offsetX = (widget.width - preview.width * scale) / 2;
-      offsetY = 0;
-    }
+    final offsetX = (widget.width - scaledWidth) / 2;
+    final offsetY = (widget.height - scaledHeight) / 2;
 
     return _Transform(scale: scale, offsetX: offsetX, offsetY: offsetY);
   }
@@ -111,50 +131,42 @@ class CoordinateMapper {
   static MappedBox? _mapSingle(
     ApdResult result,
     _Transform transform,
+    Size previewSize,
     Size widgetSize,
+    double padX,
+    double padY,
+    double normScaleX,
+    double normScaleY,
   ) {
-    // ── Step 1: Denormalize dari [0,1] ke preview space ──────────────────────
-    //
-    // YOLOv8 output sudah normalized terhadap modelInputSize.
-    // Karena input model adalah square, nilai [0,1] langsung merepresentasikan
-    // proporsi dari lebar/tinggi model. Kita gunakan previewSize untuk
-    // denormalisasi ke pixel kamera.
-    //
-    // CATATAN: ApdResult menyimpan cx,cy,w,h pada field left,top,right,bottom.
-    final double cxNorm = result.left;
-    final double cyNorm = result.top;
-    final double wNorm = result.right;
-    final double hNorm = result.bottom;
+    // Lepas letterbox padding, remap ke normalized preview [0..1]
+    final double nL = (result.left - padX) / normScaleX;
+    final double nT = (result.top - padY) / normScaleY;
+    final double nR = (result.right - padX) / normScaleX;
+    final double nB = (result.bottom - padY) / normScaleY;
 
-    // ── Step 2: Konversi cx,cy,w,h → left,top,right,bottom (preview space) ──
-    final double halfW = wNorm / 2;
-    final double halfH = hNorm / 2;
-
-    final double leftNorm = cxNorm - halfW;
-    final double topNorm = cyNorm - halfH;
-    final double rightNorm = cxNorm + halfW;
-    final double bottomNorm = cyNorm + halfH;
-
-    // ── Step 3: Scale ke widget space + tambahkan letterbox offset ───────────
+    // Scale ke screen space
     final double left =
-        leftNorm * transform.scale * widgetSize.width + transform.offsetX;
+        nL * previewSize.width * transform.scale + transform.offsetX;
     final double top =
-        topNorm * transform.scale * widgetSize.height + transform.offsetY;
+        nT * previewSize.height * transform.scale + transform.offsetY;
     final double right =
-        rightNorm * transform.scale * widgetSize.width + transform.offsetX;
+        nR * previewSize.width * transform.scale + transform.offsetX;
     final double bottom =
-        bottomNorm * transform.scale * widgetSize.height + transform.offsetY;
+        nB * previewSize.height * transform.scale + transform.offsetY;
 
     final Rect rawRect = Rect.fromLTRB(left, top, right, bottom);
-
-    // ── Step 4: Clip agar tidak melebihi batas widget ────────────────────────
     final Rect widgetBounds = Offset.zero & widgetSize;
     final Rect clipped = rawRect.intersect(widgetBounds);
 
-    // Buang box yang sepenuhnya di luar layar atau terlalu kecil.
-    if (clipped.isEmpty || clipped.width < 4 || clipped.height < 4) {
-      return null;
-    }
+    if (clipped.isEmpty || clipped.width < 4 || clipped.height < 4) return null;
+
+    print(
+      '${result.label} -> '
+      'L:${nL.toStringAsFixed(3)} '
+      'T:${nT.toStringAsFixed(3)} '
+      'R:${nR.toStringAsFixed(3)} '
+      'B:${nB.toStringAsFixed(3)}',
+    );
 
     return MappedBox(
       screenRect: clipped,

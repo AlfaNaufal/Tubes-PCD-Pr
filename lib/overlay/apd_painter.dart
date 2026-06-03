@@ -30,21 +30,15 @@ class ApdColorScheme {
 
   /// Pemetaan label → warna. Key harus lowercase dan trimmed.
   static const Map<String, Color> _labelColors = {
-    // APD Lengkap
-    'helm': Color(0xFF00E676),        // hijau cerah
-    'rompi': Color(0xFF00E676),
-    'sepatu': Color(0xFF00E676),
-    'kacamata': Color(0xFF00E676),
-    'sarung_tangan': Color(0xFF00E676),
-    'masker': Color(0xFF00E676),
+    'helmet': Color(0xFF00E676),
+    'vest': Color(0xFF00E676),
+    'gloves': Color(0xFF00E676),
+    'shoes': Color(0xFF00E676),
 
-    // APD Tidak Ada
-    'no_helm': Color(0xFFFF1744),     // merah terang
-    'no_rompi': Color(0xFFFF1744),
-    'no_sepatu': Color(0xFFFF1744),
-    'no_kacamata': Color(0xFFFF1744),
-    'no_sarung_tangan': Color(0xFFFF1744),
-    'no_masker': Color(0xFFFF1744),
+    'person': Color(0xFF42A5F5),
+
+    'non-helmet': Color(0xFFFF1744),
+    'bare-arms': Color(0xFFFF1744),
   };
 
   /// Warna fallback untuk label yang tidak terdaftar.
@@ -55,8 +49,11 @@ class ApdColorScheme {
       _labelColors[label.toLowerCase().trim()] ?? _fallback;
 
   /// Apakah label ini merepresentasikan ketidakpatuhan APD.
-  static bool isNonCompliant(String label) =>
-      label.toLowerCase().trim().startsWith('no_');
+  static bool isNonCompliant(String label) {
+    final value = label.toLowerCase().trim();
+
+    return value == 'non-helmet' || value == 'bare-arms';
+  }
 }
 
 // ── Konfigurasi Visual ─────────────────────────────────────────────────────
@@ -68,14 +65,14 @@ class _PainterConfig {
 
   static const double boxStrokeWidth = 2.5;
   static const double boxCornerRadius = 6.0;
-  static const double boxAlpha = 0.85;        // opacity outline
+  static const double boxAlpha = 0.85; // opacity outline
 
-  static const double labelPaddingH = 8.0;    // padding horizontal chip label
-  static const double labelPaddingV = 4.0;    // padding vertikal chip label
+  static const double labelPaddingH = 8.0; // padding horizontal chip label
+  static const double labelPaddingV = 4.0; // padding vertikal chip label
   static const double labelCornerRadius = 4.0;
   static const double labelFontSize = 11.5;
   static const double labelConfidenceFontSize = 10.0;
-  static const double labelOffsetY = 4.0;     // jarak chip dari atas box
+  static const double labelOffsetY = 4.0; // jarak chip dari atas box
 
   static const Color labelTextColor = Color(0xFFFFFFFF);
   static const double chipAlpha = 0.88;
@@ -99,10 +96,7 @@ class ApdPainter extends CustomPainter {
   /// Apakah confidence score ditampilkan di chip label.
   final bool showConfidence;
 
-  const ApdPainter({
-    required this.boxes,
-    this.showConfidence = true,
-  });
+  const ApdPainter({required this.boxes, this.showConfidence = true});
 
   // ── Paint ──────────────────────────────────────────────────────────────────
 
@@ -118,12 +112,13 @@ class ApdPainter extends CustomPainter {
   // ── Bounding Box ───────────────────────────────────────────────────────────
 
   void _drawBoundingBox(Canvas canvas, Rect rect, Color color) {
-    final paint = Paint()
-      ..color = color.withOpacity(_PainterConfig.boxAlpha)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _PainterConfig.boxStrokeWidth
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final paint =
+        Paint()
+          ..color = color.withOpacity(_PainterConfig.boxAlpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _PainterConfig.boxStrokeWidth
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
     final rrect = RRect.fromRectAndRadius(
       rect,
@@ -156,28 +151,35 @@ class ApdPainter extends CustomPainter {
       FontWeight.w600,
     )..layout();
 
-    final confPainter = showConfidence
-        ? (_buildTextPainter(
-            confidenceText,
-            _PainterConfig.labelConfidenceFontSize,
-            FontWeight.w400,
-          )..layout())
-        : null;
+    final confPainter =
+        showConfidence
+            ? (_buildTextPainter(
+              confidenceText,
+              _PainterConfig.labelConfidenceFontSize,
+              FontWeight.w400,
+            )..layout())
+            : null;
 
-    final chipWidth = _PainterConfig.labelPaddingH * 2 +
+    final chipWidth =
+        _PainterConfig.labelPaddingH * 2 +
         labelPainter.width +
         (confPainter != null ? confPainter.width + 6 : 0);
-    final chipHeight = _PainterConfig.labelPaddingV * 2 +
-        labelPainter.height;
+    final chipHeight = _PainterConfig.labelPaddingV * 2 + labelPainter.height;
 
     // ── Posisi chip: di atas kiri bounding box ──────────────────────────────
-    final chipTop = box.screenRect.top - chipHeight - _PainterConfig.labelOffsetY;
+    final chipTop =
+        box.screenRect.top - chipHeight - _PainterConfig.labelOffsetY;
     final chipLeft = box.screenRect.left;
 
     // Jika chip melampaui batas atas layar, pindah ke dalam box.
     final adjustedTop = chipTop < 0 ? box.screenRect.top + 2 : chipTop;
 
-    final chipRect = Rect.fromLTWH(chipLeft, adjustedTop, chipWidth, chipHeight);
+    final chipRect = Rect.fromLTWH(
+      chipLeft,
+      adjustedTop,
+      chipWidth,
+      chipHeight,
+    );
     final chipRRect = RRect.fromRectAndRadius(
       chipRect,
       const Radius.circular(_PainterConfig.labelCornerRadius),

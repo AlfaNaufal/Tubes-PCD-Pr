@@ -245,8 +245,10 @@ void main() {
       expect(boxes[1].label, 'no_helm');
 
       // Box pertama harus di kiri atas, kedua di kanan bawah
-      expect(boxes[0].screenRect.center.dx,
-          lessThan(boxes[1].screenRect.center.dx));
+      expect(
+        boxes[0].screenRect.center.dx,
+        lessThan(boxes[1].screenRect.center.dx),
+      );
     });
 
     test('label dan confidence terbawa dengan benar ke MappedBox', () {
@@ -255,7 +257,7 @@ void main() {
         cy: 0.5,
         w: 0.3,
         h: 0.3,
-        label: 'rompi',
+        label: 'vest',
         confidence: 0.87,
       );
 
@@ -265,7 +267,7 @@ void main() {
         widgetSize: const Size(320, 320),
       );
 
-      expect(boxes.first.label, 'rompi');
+      expect(boxes.first.label, 'vest');
       expect(boxes.first.confidence, closeTo(0.87, 0.001));
     });
   });

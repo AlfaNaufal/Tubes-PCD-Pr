@@ -1,4 +1,7 @@
-helm
-no_helm
-rompi
-no_rompi
+gloves
+helmet
+non-helmet
+person
+shoes
+vest
+bare-arms

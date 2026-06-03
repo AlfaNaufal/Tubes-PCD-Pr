@@ -3,17 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
 import '../../core/env_config.dart';
+import 'dart:async';
 
 import '../../hardware/controller/camera_manager.dart';
 import '../../hardware/handler/camera_stream_handler.dart';
 
 import '../../inference/service/isolate_runner.dart';
 import '../../inference/model/apd_result.dart';
-
-import '../model/report_model.dart';
-import '../../supervisor/controller/dashboard_controller.dart';
-
 import '../../auth/controller/auth_controller.dart';
+import '../../supervisor/controller/dashboard_controller.dart';
+import '../../inspection/model/report_model.dart';
+
+import '../../overlay/overlay_controller.dart';
+import '../../overlay/apd_overlay_widget.dart';
 
 class CameraView extends StatefulWidget {
   const CameraView({super.key});
@@ -25,9 +27,11 @@ class CameraView extends StatefulWidget {
 class _CameraViewState extends State<CameraView> {
   late final CameraManager _cameraManager;
   late final CameraStreamHandler _streamHandler;
-
   List<ApdResult> _detectionResults = [];
   bool _isCapturing = false;
+  bool _isProcessingFrame = false;
+  StreamSubscription? _reportSub;
+  StreamSubscription? _frameSub;
 
   @override
   void initState() {
@@ -42,10 +46,10 @@ class _CameraViewState extends State<CameraView> {
 
     if (_cameraManager.isReady) {
       await IsolateRunner.init(
-        modelPath: Env.modelPath,
-        labelPath: Env.labelPath,
-        modelInputSize: Env.modelInputSize,
-        confidenceThreshold: Env.confidenceThreshold,
+        modelPath: EnvConfig.modelPath,
+        labelPath: EnvConfig.labelPath,
+        modelInputSize: EnvConfig.modelInputSize,
+        confidenceThreshold: EnvConfig.confidenceThreshold,
       );
 
       await _streamHandler.start();
@@ -54,116 +58,318 @@ class _CameraViewState extends State<CameraView> {
   }
 
   void _listenToInferenceResults() {
-    // 1. Listen khusus untuk hasil jepretan laporan
-    IsolateRunner.reportStream.listen((response) {
-      if (mounted && response.capturedImageBytes != null) {
-        // Tampilkan dialog/halaman baru untuk preview laporan sebelum dikirim ke Supervisor
-        setState(() => _isCapturing = false);
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showReportPreviewDialog(
-            response.capturedImageBytes!,
-            response.results,
-          );
-        });
-      }
+    _reportSub = IsolateRunner.reportStream.listen((response) async {
+      if (!mounted || response.capturedImageBytes == null) return;
+      await _streamHandler.start();
+      if (mounted) setState(() => _isCapturing = false);
+      _showReportPreviewDialog(response.capturedImageBytes!, response.results);
     });
 
-    // 2. Listen stream kamera regular
-    _streamHandler.imageStream.listen((image) async {
+    _frameSub = _streamHandler.imageStream.listen((image) async {
+      if (_isProcessingFrame) return;
+      _isProcessingFrame = true;
       try {
         final results = await IsolateRunner.process(image);
-        if (mounted) {
+        if (mounted && !_isCapturing) {
           setState(() => _detectionResults = results);
         }
       } catch (e) {
         debugPrint('Error: $e');
       } finally {
-        if (mounted) _streamHandler.markFrameProcessed();
+        _isProcessingFrame = false;
+        _streamHandler.markFrameProcessed();
       }
     });
   }
 
   @override
   void dispose() {
+    _reportSub?.cancel();
+    _frameSub?.cancel();
+
     IsolateRunner.dispose();
     _streamHandler.dispose();
     _cameraManager.dispose();
+
     super.dispose();
   }
 
   void _showReportPreviewDialog(Uint8List imageBytes, List<ApdResult> results) {
-    // Hitung jumlah pelanggaran (contoh)
-    int noHelmetCount = results.where((r) => r.label == 'no_helmet').length;
+    final nameController = TextEditingController();
+    final siteController = TextEditingController();
+    final divisionController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    // Hitung status APD dari results
+    print(
+      'DEBUG results: ${results.map((r) => "${r.label}:${r.confidence.toStringAsFixed(2)}").toList()}',
+    );
+
+    final person = results.any(
+      (r) => r.label == 'person' && r.confidence > 0.15,
+    );
+    final helmet = results.any(
+      (r) => r.label == 'helmet' && r.confidence > 0.15,
+    );
+    final vest = results.any((r) => r.label == 'vest' && r.confidence > 0.15);
+
+    print('DEBUG: person=$person helmet=$helmet vest=$vest');
+
+    String apdStatusLabel;
+    Color apdStatusColor;
+
+    if (!person) {
+      apdStatusLabel = 'Tidak Ada Pekerja Terdeteksi';
+      apdStatusColor = Colors.grey;
+    } else if (helmet && vest) {
+      apdStatusLabel = '✅ Helm + Vest Lengkap';
+      apdStatusColor = Colors.green;
+    } else if (helmet && !vest) {
+      apdStatusLabel = '⚠️ Pakai Helm, Tanpa Vest';
+      apdStatusColor = Colors.orangeAccent;
+    } else if (!helmet && vest) {
+      apdStatusLabel = '⚠️ Pakai Vest, Tanpa Helm';
+      apdStatusColor = Colors.orange;
+    } else {
+      apdStatusLabel = '🚨 Tanpa Helm & Tanpa Vest';
+      apdStatusColor = Colors.redAccent;
+    }
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder:
           (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
+            backgroundColor: const Color(0xFF161B22),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFF30363D)),
+            ),
             title: const Text(
               'Kirim Laporan HSE',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Menampilkan gambar ber-PCD hasil jepretan
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    imageBytes,
-                    height: 200,
-                    fit: BoxFit.cover,
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: double.infinity,
+                        height: 160,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(imageBytes, fit: BoxFit.cover),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Status APD preview
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: apdStatusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: apdStatusColor.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Text(
+                          apdStatusLabel,
+                          style: TextStyle(
+                            color: apdStatusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Detail helm & Vest
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: helmet ? Icons.check_circle : Icons.cancel,
+                              label: helmet ? 'Helm ✓' : 'Helm ✗',
+                              color: helmet ? Colors.green : Colors.redAccent,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildApdChip(
+                              icon: vest ? Icons.check_circle : Icons.cancel,
+                              label: vest ? 'Vest ✓' : 'Vest ✗',
+                              color: vest ? Colors.green : Colors.orangeAccent,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: nameController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: _buildInputDecoration(
+                          'Nama Pekerja',
+                          Icons.person_outline,
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Nama tidak boleh kosong'
+                                    : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: siteController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: _buildInputDecoration(
+                          'Site / Lokasi Kerja',
+                          Icons.location_on_outlined,
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Site tidak boleh kosong'
+                                    : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: divisionController,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: _buildInputDecoration(
+                          'Divisi / Vendor',
+                          Icons.business_outlined,
+                        ),
+                        validator:
+                            (v) =>
+                                v == null || v.isEmpty
+                                    ? 'Divisi tidak boleh kosong'
+                                    : null,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Terdeteksi Pekerja Tanpa Helm: $noHelmetCount',
-                  style: const TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context), // Batal
+                onPressed: () => Navigator.pop(context),
                 child: const Text(
                   'Batal',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Color(0xFF8B949E)),
                 ),
               ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () {
-                  final auth = context.read<AuthController>();
-                  final currentUserName =
-                      auth.currentUser?.name ?? 'Petugas K3 (Unknown)';
+                  if (formKey.currentState!.validate()) {
+                    final auth = context.read<AuthController>();
 
-                  final newReport = ReportModel(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    timestamp: DateTime.now(),
-                    imageBytes: imageBytes,
-                    detections: results,
-                    inspectorName: currentUserName,
-                  );
+                    final newReport = ReportModel(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      timestamp: DateTime.now(),
+                      imageBytes: imageBytes,
+                      detections: results,
+                      inspectorName: auth.currentUser?.name ?? 'Inspector',
+                      workerName: nameController.text.trim(),
+                      site: siteController.text.trim(),
+                      division: divisionController.text.trim(),
+                    );
 
-                  context.read<DashboardController>().addReport(newReport);
+                    context.read<DashboardController>().addReport(newReport);
+                    Navigator.pop(context);
 
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Laporan tersimpan ke database offline!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Laporan berhasil disimpan offline!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
                 },
-                child: const Text('Kirim Laporan'),
+                child: const Text('Kirim'),
               ),
             ],
           ),
+    );
+  }
+
+  Widget _buildApdChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF8B949E), fontSize: 13),
+      prefixIcon: Icon(icon, color: const Color(0xFFFFB800), size: 18),
+      filled: true,
+      fillColor: const Color(0xFF0D1117),
+      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF30363D)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFFFFB800)),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.redAccent),
+      ),
     );
   }
 
@@ -175,18 +381,29 @@ class _CameraViewState extends State<CameraView> {
         backgroundColor: Colors.black,
         body: Consumer<CameraManager>(
           builder: (context, cam, _) {
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                _buildCameraPreview(cam),
+            if (!cam.isReady)
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.amber),
+              );
+            final screen = MediaQuery.of(context).size;
 
-                // ── Bounding Box Overlay ─────────────────────────────
+            debugPrint('SCREEN = ${screen.width} x ${screen.height}');
+            return ChangeNotifierProvider(
+              create: (_) => OverlayController()..startListening(),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildCameraPreview(cam),
 
-                // ── Status Overlay ───────────────────────────────────
-                _buildStatusOverlay(cam),
+                  ApdOverlayWidget(
+                    cameraManager: _cameraManager,
+                    showDebugInfo: true,
+                  ),
 
-                _buildTopBar(context),
-              ],
+                  _buildStatusOverlay(cam),
+                  _buildTopBar(context),
+                ],
+              ),
             );
           },
         ),
@@ -196,8 +413,9 @@ class _CameraViewState extends State<CameraView> {
           onPressed:
               _isCapturing
                   ? null
-                  : () {
+                  : () async {
                     setState(() => _isCapturing = true);
+                    await Future.delayed(const Duration(milliseconds: 300));
                     IsolateRunner.captureForReport();
                   },
           child:
@@ -210,13 +428,11 @@ class _CameraViewState extends State<CameraView> {
                       strokeWidth: 3,
                     ),
                   )
-                  : Icon(Icons.camera_alt, color: Colors.black, size: 28),
+                  : const Icon(Icons.camera_alt, color: Colors.black, size: 28),
         ),
       ),
     );
   }
-
-  // ── Sub-builders ──────────────────────────────────────────────────────────
 
   Widget _buildCameraPreview(CameraManager cam) {
     if (cam.status == CameraStatus.initializing) {
@@ -265,11 +481,16 @@ class _CameraViewState extends State<CameraView> {
       );
     }
 
-    if (!cam.isReady || cam.controller == null) {
-      return const SizedBox.shrink();
-    }
+    if (!cam.isReady || cam.controller == null) return const SizedBox.shrink();
 
-    // Preview memenuhi layar (cover mode)
+    final preview = cam.controller!.value.previewSize!;
+
+    debugPrint('CAMERA PREVIEW RAW = ${preview.width} x ${preview.height}');
+
+    debugPrint(
+      'CAMERA PREVIEW ROTATED = '
+      '${preview.height} x ${preview.width}',
+    );
     return SizedBox.expand(
       child: FittedBox(
         fit: BoxFit.cover,
@@ -367,7 +588,7 @@ class _CameraViewState extends State<CameraView> {
       return Align(
         alignment: Alignment.bottomCenter,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 40),
+          margin: const EdgeInsets.only(bottom: 100),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.black.withOpacity(0.7),

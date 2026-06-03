@@ -65,7 +65,7 @@ class OverlayController extends ChangeNotifier {
   // ── Constructor ────────────────────────────────────────────────────────────
 
   OverlayController({FeedbackService? feedbackService})
-      : _feedbackService = feedbackService ?? FeedbackService();
+    : _feedbackService = feedbackService ?? FeedbackService();
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -87,10 +87,12 @@ class OverlayController extends ChangeNotifier {
   }
 
   @override
-  Future<void> dispose() async {
+  void dispose() {
     _disposed = true;
     stopListening();
-    await _feedbackService.cancelFeedback();
+
+    _feedbackService.cancelFeedback();
+
     super.dispose();
   }
 

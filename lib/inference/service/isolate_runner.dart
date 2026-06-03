@@ -1,5 +1,3 @@
-// lib/inference/service/isolate_runner.dart
-
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
@@ -13,7 +11,6 @@ import '../model/apd_result.dart';
 
 enum IsolateCommand { captureNextFrame }
 
-// ── Wrapper Data Komunikasi Bolak-Balik ────────────────────────────────
 class IsolateResponse {
   final List<ApdResult> results;
   final Uint8List? capturedImageBytes;
@@ -26,7 +23,6 @@ class IsolateResponse {
   });
 }
 
-// ── Payload Inisialisasi ────────────────────────────────────────────────
 class IsolateInitPayload {
   final SendPort mainSendPort;
   final Uint8List modelBytes;
@@ -53,10 +49,8 @@ class IsolateRunner {
   static Isolate? _isolate;
   static SendPort? _isolateSendPort;
   static ReceivePort? _mainReceivePort;
-
   static bool _isProcessing = false;
 
-  // Stream Controller untuk mengirim laporan
   static final StreamController<IsolateResponse> _reportStreamController =
       StreamController<IsolateResponse>.broadcast();
   static Stream<IsolateResponse> get reportStream =>
@@ -88,14 +82,13 @@ class IsolateRunner {
       if (message is SendPort) {
         _isolateSendPort = message;
       } else if (message is IsolateResponse) {
-        if (message.isCaptureResponse) {
-          _reportStreamController.add(message);
-        }
+        _isProcessing = false;
+
+        _reportStreamController.add(message);
 
         if (_completer != null && !_completer!.isCompleted) {
           _completer!.complete(message.results);
         }
-        _isProcessing = false;
       }
     });
   }
@@ -106,7 +99,6 @@ class IsolateRunner {
     if (_isolateSendPort == null || _isProcessing) return [];
     _isProcessing = true;
     _completer = Completer<List<ApdResult>>();
-
     _isolateSendPort!.send(FramePayload(image));
     return _completer!.future;
   }
@@ -132,7 +124,6 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
   initData.mainSendPort.send(isolateReceivePort.sendPort);
   bool _shouldCaptureNext = false;
 
-  // Inisialisasi TFLite harus di ATAS await for
   final interpreter = ApdInterpreter();
   await interpreter.initFromBytes(
     modelBytes: initData.modelBytes,
@@ -140,7 +131,6 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
     confidenceThreshold: initData.confidenceThreshold,
   );
 
-  // Hanya ada SATU loop await for
   await for (final message in isolateReceivePort) {
     if (message == IsolateCommand.captureNextFrame) {
       _shouldCaptureNext = true;
@@ -148,38 +138,60 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
     }
 
     if (message is FramePayload) {
+      final sw = Stopwatch()..start();
       final rgb = PcdProcessor.convertYUV420toRGB(message.cameraImage);
       if (rgb == null) {
         initData.mainSendPort.send(IsolateResponse(results: <ApdResult>[]));
         continue;
       }
+      final rotated = img.copyRotate(rgb, angle: 90);
+      final resized = PcdProcessor.resize(rotated, initData.modelInputSize);
 
-      final resized = PcdProcessor.resize(rgb, initData.modelInputSize);
-
-      // 1. Proses PCD
+      // PCD preprocessing
       final pcdProcessed = PcdProcessor.applyPCDFilters(resized);
 
-      // 2. Normalisasi & Deteksi AI
-      final normalized = PcdProcessor.normalize(pcdProcessed);
-      final results = interpreter.run(normalized);
+      // FIX: normalize sekarang return 4D [1][H][W][C]
+      // final normalized = PcdProcessor.normalize(pcdProcessed);
+      final List<List<List<List<double>>>> normalized = PcdProcessor.normalize(
+        pcdProcessed,
+      );
 
-      // 3. Logika Capture Laporan
+      final rawResults = interpreter.run(normalized);
+      final results =
+          rawResults.where((r) {
+            return r.left.isFinite &&
+                r.top.isFinite &&
+                r.right.isFinite &&
+                r.bottom.isFinite;
+          }).toList();
+
       Uint8List? jpgBytes;
-      bool isCapture = false;
 
+      final reportImage = PcdProcessor.processForReport(rgb);
+
+      jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
       if (_shouldCaptureNext) {
-        final reportResized = PcdProcessor.resize(rgb, 720);
-        final reportPcd = PcdProcessor.applyPCDFilters(reportResized);
-        jpgBytes = Uint8List.fromList(img.encodeJpg(reportPcd, quality: 85));
-        isCapture = true;
-        _shouldCaptureNext = false; // Reset flag
+        final reportImage = PcdProcessor.processForReport(rgb);
+
+        jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
+
+        _shouldCaptureNext = false;
+
+        initData.mainSendPort.send(
+          IsolateResponse(
+            results: results,
+            capturedImageBytes: jpgBytes,
+            isCaptureResponse: true,
+          ),
+        );
+        continue;
       }
 
       initData.mainSendPort.send(
         IsolateResponse(
           results: results,
-          capturedImageBytes: jpgBytes,
-          isCaptureResponse: isCapture,
+          capturedImageBytes: null,
+          isCaptureResponse: false,
         ),
       );
     }

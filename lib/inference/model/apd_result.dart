@@ -30,4 +30,24 @@ class ApdResult extends HiveObject {
     required this.right,
     required this.bottom,
   });
+
+  Map<String, dynamic> toMongoMap() {
+    return {
+      'label': label,
+      'confidence': confidence,
+      'bbox': {'left': left, 'top': top, 'right': right, 'bottom': bottom},
+    };
+  }
+
+  factory ApdResult.fromMap(Map<String, dynamic> map) {
+    final bbox = map['bbox'] as Map<String, dynamic>;
+    return ApdResult(
+      label: map['label'] ?? '',
+      confidence: (map['confidence'] as num).toDouble(),
+      left: (bbox['left'] as num).toDouble(),
+      top: (bbox['top'] as num).toDouble(),
+      right: (bbox['right'] as num).toDouble(),
+      bottom: (bbox['bottom'] as num).toDouble(),
+    );
+  }
 }
