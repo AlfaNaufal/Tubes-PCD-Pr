@@ -29,13 +29,13 @@ class DashboardView extends StatelessWidget {
           ),
         ),
         actions: [
-          // Fix: Consumer memastikan logout() memicu rebuild _AuthGate
+          // Pakai ctx dari Consumer, bukan context outer
           Consumer<AuthController>(
             builder:
                 (ctx, auth, _) => IconButton(
                   icon: const Icon(Icons.logout, color: Color(0xFF6B7280)),
                   tooltip: 'Logout',
-                  onPressed: () => auth.logout(),
+                  onPressed: () => _confirmLogout(ctx, auth),
                 ),
           ),
         ],
@@ -160,13 +160,62 @@ class DashboardView extends StatelessWidget {
     );
   }
 
+  // ── Logout dengan konfirmasi + clear navigation stack ────────────────────
+
+  void _confirmLogout(BuildContext context, AuthController auth) {
+    showDialog<void>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            title: const Text(
+              'Keluar dari Akun',
+              style: TextStyle(color: Color(0xFF111827), fontSize: 16),
+            ),
+            content: const Text(
+              'Yakin ingin logout?',
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(color: Color(0xFF6B7280)),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // 1. Tutup dialog
+                  Navigator.of(dialogContext).pop();
+                  // 2. Ubah state auth
+                  auth.logout();
+                  // 3. Clear seluruh stack → paksa ke /login
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
+                },
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Color(0xFFDC2626)),
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
   // ── Detail Dialog ──────────────────────────────────────────────────────────
 
   void _showReportDetailDialog(BuildContext context, ReportModel report) {
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (dialogContext) => AlertDialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -277,7 +326,7 @@ class DashboardView extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.of(dialogContext).pop(),
                 child: const Text(
                   'Tutup',
                   style: TextStyle(color: Color(0xFFFFB800)),
