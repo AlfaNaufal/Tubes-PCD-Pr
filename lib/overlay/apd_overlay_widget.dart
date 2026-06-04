@@ -5,7 +5,7 @@
 // ── Tanggung jawab ──────────────────────────────────────────────────────────
 //   - Meletakkan CustomPaint di atas CameraPreview
 //   - Menampilkan status banner (compliance / no detection)
-//   - Menampilkan FPS counter dan jumlah deteksi (debug mode)
+//   - Menampilkan FPS counter dan jumlah deteksi (debug mode) — di atas banner
 //   - Meneruskan ukuran widget ke OverlayController via LayoutBuilder
 //   - Menghubungkan CameraManager.previewSize ke OverlayController
 //
@@ -114,18 +114,13 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
                   ),
                 ),
 
-                // ── Layer 2: Status Banner (bawah layar) ─────────────────────
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: _StatusBanner(status: controller.complianceStatus),
-                ),
-
-                // ── Layer 3: Debug Overlay (pojok kanan atas) ────────────────
+                // ── Layer 2: Debug Overlay (di atas status banner) ───────────
+                // Diletakkan SEBELUM status banner agar tertimpa banner jika
+                // konten terlalu tinggi (urutan Stack = bawah ke atas).
                 if (widget.showDebugInfo)
                   Positioned(
-                    top: 8,
+                    bottom: 52, // tepat di atas _StatusBanner (~50 px)
+                    left: 8,
                     right: 8,
                     child: _DebugOverlay(
                       fps: _fps,
@@ -134,6 +129,14 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
                       widgetSize: widgetSize,
                     ),
                   ),
+
+                // ── Layer 3: Status Banner (paling bawah layar) ──────────────
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _StatusBanner(status: controller.complianceStatus),
+                ),
               ],
             );
           },
@@ -189,20 +192,20 @@ class _StatusIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (status) {
       ComplianceStatus.noDetection => const Icon(
-          Icons.search,
-          color: Colors.white70,
-          size: 18,
-        ),
+        Icons.search,
+        color: Colors.white70,
+        size: 18,
+      ),
       ComplianceStatus.compliant => const Icon(
-          Icons.check_circle_outline,
-          color: Colors.white,
-          size: 18,
-        ),
+        Icons.check_circle_outline,
+        color: Colors.white,
+        size: 18,
+      ),
       ComplianceStatus.nonCompliant => const Icon(
-          Icons.warning_amber_rounded,
-          color: Colors.white,
-          size: 18,
-        ),
+        Icons.warning_amber_rounded,
+        color: Colors.white,
+        size: 18,
+      ),
     };
   }
 }
@@ -224,14 +227,14 @@ class _DebugOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preview = previewSize != null
-        ? '${previewSize!.width.toInt()}×${previewSize!.height.toInt()}'
-        : 'N/A';
-    final widget =
-        '${widgetSize.width.toInt()}×${widgetSize.height.toInt()}';
+    final preview =
+        previewSize != null
+            ? '${previewSize!.width.toInt()}×${previewSize!.height.toInt()}'
+            : 'N/A';
+    final widget = '${widgetSize.width.toInt()}×${widgetSize.height.toInt()}';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.65),
         borderRadius: BorderRadius.circular(6),
@@ -243,13 +246,17 @@ class _DebugOverlay extends StatelessWidget {
           fontFamily: 'monospace',
           height: 1.5,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        // ── Tampilan horizontal satu baris ──────────────────────────────
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('FPS: ${fps.toStringAsFixed(1)}'),
+            const SizedBox(width: 12),
             Text('Box: $boxCount'),
+            const SizedBox(width: 12),
             Text('Preview: $preview'),
+            const SizedBox(width: 12),
             Text('Widget: $widget'),
           ],
         ),
