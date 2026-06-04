@@ -5,12 +5,6 @@ import 'package:provider/provider.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../auth/model/user_model.dart';
 
-/// Halaman sambutan HSE Inspector.
-/// Menampilkan info user, status sistem, dan tombol untuk memulai scan kamera.
-///
-/// Routing:
-///   Login (inspector) → InspectionHomeView → CameraView
-///   CameraView back   → InspectionHomeView  (pushNamed, bukan pushReplacement)
 class InspectionHomeView extends StatelessWidget {
   const InspectionHomeView({super.key});
 
@@ -20,7 +14,7 @@ class InspectionHomeView extends StatelessWidget {
     final user = auth.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -40,7 +34,7 @@ class InspectionHomeView extends StatelessWidget {
                     Text(
                       'Selamat datang,',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: const Color(0xFF6B7280),
                         fontSize: 14,
                       ),
                     ),
@@ -48,13 +42,13 @@ class InspectionHomeView extends StatelessWidget {
                     Text(
                       user?.name ?? 'Inspector',
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF111827),
                         fontSize: 26,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -64,13 +58,13 @@ class InspectionHomeView extends StatelessWidget {
                         color: const Color(0xFFFFB800).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: const Color(0xFFFFB800).withOpacity(0.3),
+                          color: const Color(0xFFFFB800).withOpacity(0.4),
                         ),
                       ),
                       child: Text(
                         user?.role.displayName ?? 'HSE Inspector',
                         style: const TextStyle(
-                          color: Color(0xFFFFB800),
+                          color: Color(0xFFB45309),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -87,7 +81,6 @@ class InspectionHomeView extends StatelessWidget {
                         Expanded(
                           child: _buildStatusCard(
                             icon: Icons.model_training_outlined,
-                            label: 'Model',
                             value: 'YOLOv8 Nano',
                             sub: 'TFLite · Edge',
                             color: const Color(0xFF00C853),
@@ -97,7 +90,6 @@ class InspectionHomeView extends StatelessWidget {
                         Expanded(
                           child: _buildStatusCard(
                             icon: Icons.memory_outlined,
-                            label: 'Inferensi',
                             value: 'On-Device',
                             sub: 'Isolate · PCD',
                             color: const Color(0xFF2196F3),
@@ -139,14 +131,11 @@ class InspectionHomeView extends StatelessWidget {
   Widget _buildTopBar(BuildContext context, AuthController auth) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.06), width: 1),
-        ),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
       ),
       child: Row(
         children: [
-          // Logo
           Container(
             width: 36,
             height: 36,
@@ -165,21 +154,24 @@ class InspectionHomeView extends StatelessWidget {
             child: Text(
               'APD Guard',
               style: TextStyle(
-                color: Colors.white,
+                color: Color(0xFF111827),
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          // Logout button
-          IconButton(
-            onPressed: () => _confirmLogout(context, auth),
-            icon: const Icon(
-              Icons.logout_outlined,
-              color: Color(0xFF8B949E),
-              size: 20,
-            ),
-            tooltip: 'Logout',
+          // ── FIX: pakai ctx dari Consumer, bukan context outer ──────────
+          Consumer<AuthController>(
+            builder:
+                (ctx, authCtrl, _) => IconButton(
+                  onPressed: () => _confirmLogout(ctx, authCtrl),
+                  icon: const Icon(
+                    Icons.logout_outlined,
+                    color: Color(0xFF6B7280),
+                    size: 20,
+                  ),
+                  tooltip: 'Logout',
+                ),
           ),
         ],
       ),
@@ -190,7 +182,7 @@ class InspectionHomeView extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: Color(0xFF8B949E),
+        color: Color(0xFF9CA3AF),
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 1.2,
@@ -200,7 +192,6 @@ class InspectionHomeView extends StatelessWidget {
 
   Widget _buildStatusCard({
     required IconData icon,
-    required String label,
     required String value,
     required String sub,
     required Color color,
@@ -208,9 +199,16 @@ class InspectionHomeView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +218,7 @@ class InspectionHomeView extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: Colors.white,
+              color: Color(0xFF111827),
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -228,7 +226,7 @@ class InspectionHomeView extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             sub,
-            style: const TextStyle(color: Color(0xFF8B949E), fontSize: 11),
+            style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 11),
           ),
         ],
       ),
@@ -245,9 +243,16 @@ class InspectionHomeView extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children:
@@ -272,7 +277,7 @@ class InspectionHomeView extends StatelessWidget {
                               Text(
                                 item.$2,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFF111827),
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -280,7 +285,7 @@ class InspectionHomeView extends StatelessWidget {
                               Text(
                                 item.$3,
                                 style: const TextStyle(
-                                  color: Color(0xFF8B949E),
+                                  color: Color(0xFF9CA3AF),
                                   fontSize: 11,
                                 ),
                               ),
@@ -296,9 +301,9 @@ class InspectionHomeView extends StatelessWidget {
                     ),
                   ),
                   if (i < items.length - 1)
-                    Divider(
+                    const Divider(
                       height: 1,
-                      color: Colors.white.withOpacity(0.06),
+                      color: Color(0xFFE5E7EB),
                       indent: 16,
                       endIndent: 16,
                     ),
@@ -320,9 +325,16 @@ class InspectionHomeView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children:
@@ -343,7 +355,7 @@ class InspectionHomeView extends StatelessWidget {
                         child: Text(
                           step.$1,
                           style: const TextStyle(
-                            color: Color(0xFFFFB800),
+                            color: Color(0xFFB45309),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
@@ -355,7 +367,7 @@ class InspectionHomeView extends StatelessWidget {
                       child: Text(
                         step.$2,
                         style: const TextStyle(
-                          color: Color(0xFFE6EDF3),
+                          color: Color(0xFF374151),
                           fontSize: 13,
                           height: 1.5,
                         ),
@@ -372,11 +384,9 @@ class InspectionHomeView extends StatelessWidget {
   Widget _buildBottomCTA(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D1117),
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.06), width: 1),
-        ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
       ),
       child: SizedBox(
         width: double.infinity,
@@ -406,40 +416,49 @@ class InspectionHomeView extends StatelessWidget {
     );
   }
 
+  // ── FIX: terima BuildContext yang benar (dari Consumer) ──────────────────
   void _confirmLogout(BuildContext context, AuthController auth) {
     showDialog<void>(
       context: context,
       builder:
-          (_) => AlertDialog(
-            backgroundColor: const Color(0xFF161B22),
+          (dialogContext) => AlertDialog(
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Color(0xFF30363D)),
+              side: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
             title: const Text(
               'Keluar dari Akun',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Color(0xFF111827), fontSize: 16),
             ),
             content: const Text(
               'Yakin ingin logout?',
-              style: TextStyle(color: Color(0xFF8B949E), fontSize: 14),
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                // ── FIX: pakai dialogContext untuk tutup dialog ──────────────
+                onPressed: () => Navigator.of(dialogContext).pop(),
                 child: const Text(
                   'Batal',
-                  style: TextStyle(color: Color(0xFF8B949E)),
+                  style: TextStyle(color: Color(0xFF6B7280)),
                 ),
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  // 1. Tutup dialog
+                  Navigator.of(dialogContext).pop();
+                  // 2. Logout — ubah state AuthController
                   auth.logout();
+                  // 3. Clear seluruh navigation stack, kembali ke /login
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false, // hapus semua route di stack
+                  );
                 },
                 child: const Text(
                   'Logout',
-                  style: TextStyle(color: Color(0xFFFF7B72)),
+                  style: TextStyle(color: Color(0xFFDC2626)),
                 ),
               ),
             ],
