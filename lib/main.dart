@@ -33,14 +33,20 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // ── Status bar: dark icons agar terbaca di background putih ──────────────
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   // ── Hive init & Registrasi Adapter ────────────────────────────────────────
   final appDir = await getApplicationDocumentsDirectory();
   await Hive.initFlutter(appDir.path);
 
-  // Daftarkan adapter untuk database lokal
   Hive.registerAdapter(ApdResultAdapter());
   Hive.registerAdapter(ReportModelAdapter());
-
   // Hive.registerAdapter(InspectionSessionModelAdapter());
 
   // ── Env config init ───────────────────────────────────────────────────────
@@ -49,9 +55,8 @@ void main() async {
 
   // ── Inisialisasi Database Controller Supervisor ───────────────────────────
   final dashboardController = DashboardController();
-  await dashboardController.init(); // Buka box Hive dan muat data offline
+  await dashboardController.init();
 
-  // Lempar controller yang sudah siap ke dalam App
   runApp(APDGuardApp(dashboardController: dashboardController));
 }
 
@@ -76,14 +81,17 @@ class APDGuardApp extends StatelessWidget {
       child: MaterialApp(
         title: 'APD Guard',
         debugShowCheckedModeBanner: false,
+
+        // ── Light theme: outdoor visibility ──────────────────────────────────
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFFFFB800),
-            brightness: Brightness.dark,
+            brightness: Brightness.light,
           ),
-          scaffoldBackgroundColor: const Color(0xFF0D1117),
+          scaffoldBackgroundColor: Colors.white,
           useMaterial3: true,
         ),
+
         home: const _AuthGate(),
         routes: {
           '/login': (_) => const LoginView(),
@@ -94,7 +102,7 @@ class APDGuardApp extends StatelessWidget {
           '/inspection': (_) => const InspectionHomeView(),
           // Supervisor routes
           '/dashboard': (_) => const DashboardView(),
-          // '/history':   (_) => const HistoryView(),   // Role 4
+          // '/history': (_) => const HistoryView(),   // Role 4
         },
       ),
     );
@@ -106,10 +114,10 @@ class APDGuardApp extends StatelessWidget {
 /// Menentukan halaman awal berdasarkan status autentikasi dan role.
 ///
 /// Flow:
-///   Belum login          → LoginView
-///   hse_inspector        → InspectionHomeView
-///   hse_supervisor       → DashboardView
-///   unknown              → paksa logout → LoginView
+///   Belum login     → LoginView
+///   hse_inspector   → InspectionHomeView
+///   supervisor      → DashboardView
+///   unknown         → paksa logout → LoginView
 class _AuthGate extends StatelessWidget {
   const _AuthGate();
 
@@ -127,7 +135,7 @@ class _AuthGate extends StatelessWidget {
           return const LoginView();
         }
 
-        // Supervisor → Langsung masuk ke Dashboard Asli
+        // Supervisor → Dashboard
         if (user.isSupervisor) {
           return const DashboardView();
         }

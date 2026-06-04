@@ -51,7 +51,7 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: Colors.white, // ← light untuk outdoor visibility
       body: Consumer<AuthController>(
         builder: (context, auth, _) {
           return SafeArea(
@@ -87,7 +87,7 @@ class _LoginViewState extends State<LoginView> {
                               Text(
                                 'APD Guard',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFF1A1A1A),
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.5,
@@ -96,7 +96,7 @@ class _LoginViewState extends State<LoginView> {
                               Text(
                                 'Sistem Keselamatan Kerja',
                                 style: TextStyle(
-                                  color: Color(0xFF8B949E),
+                                  color: Color(0xFF6B7280),
                                   fontSize: 12,
                                 ),
                               ),
@@ -110,7 +110,7 @@ class _LoginViewState extends State<LoginView> {
                       const Text(
                         'Masuk ke Akun',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF111827),
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
                         ),
@@ -119,7 +119,7 @@ class _LoginViewState extends State<LoginView> {
                       const Text(
                         'Gunakan kredensial yang diberikan\nadministrator K3.',
                         style: TextStyle(
-                          color: Color(0xFF8B949E),
+                          color: Color(0xFF6B7280),
                           fontSize: 14,
                           height: 1.5,
                         ),
@@ -132,10 +132,10 @@ class _LoginViewState extends State<LoginView> {
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3D1515),
+                            color: const Color(0xFFFEF2F2),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: const Color(0xFFDA3633),
+                              color: const Color(0xFFFCA5A5),
                               width: 1,
                             ),
                           ),
@@ -143,7 +143,7 @@ class _LoginViewState extends State<LoginView> {
                             children: [
                               const Icon(
                                 Icons.error_outline,
-                                color: Color(0xFFFF7B72),
+                                color: Color(0xFFDC2626),
                                 size: 18,
                               ),
                               const SizedBox(width: 10),
@@ -151,7 +151,7 @@ class _LoginViewState extends State<LoginView> {
                                 child: Text(
                                   auth.errorMessage ?? 'Terjadi kesalahan.',
                                   style: const TextStyle(
-                                    color: Color(0xFFFF7B72),
+                                    color: Color(0xFFDC2626),
                                     fontSize: 13,
                                   ),
                                 ),
@@ -196,13 +196,12 @@ class _LoginViewState extends State<LoginView> {
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: const Color(0xFF8B949E),
+                            color: const Color(0xFF9CA3AF),
                             size: 20,
                           ),
-                          onPressed:
-                              () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
@@ -222,39 +221,36 @@ class _LoginViewState extends State<LoginView> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed:
-                              auth.isLoading
-                                  ? null
-                                  : () => _onLoginPressed(auth),
+                          onPressed: auth.isLoading
+                              ? null
+                              : () => _onLoginPressed(auth),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFFB800),
                             foregroundColor: Colors.black,
-                            disabledBackgroundColor: const Color(
-                              0xFFFFB800,
-                            ).withOpacity(0.5),
+                            disabledBackgroundColor:
+                                const Color(0xFFFFB800).withOpacity(0.4),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                             elevation: 0,
                           ),
-                          child:
-                              auth.isLoading
-                                  ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Colors.black54,
-                                    ),
-                                  )
-                                  : const Text(
-                                    'Masuk',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                    ),
+                          child: auth.isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.black54,
                                   ),
+                                )
+                              : const Text(
+                                  'Masuk',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                         ),
                       ),
 
@@ -265,7 +261,7 @@ class _LoginViewState extends State<LoginView> {
                         child: Text(
                           'v1.0.0 · APD Guard K3',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.black.withOpacity(0.2),
                             fontSize: 11,
                           ),
                         ),
@@ -288,7 +284,7 @@ class _LoginViewState extends State<LoginView> {
     return Text(
       text,
       style: const TextStyle(
-        color: Color(0xFFE6EDF3),
+        color: Color(0xFF374151),
         fontSize: 13,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.3,
@@ -310,29 +306,29 @@ class _LoginViewState extends State<LoginView> {
       obscureText: obscure,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: const TextStyle(color: Color(0xFF111827), fontSize: 15),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF484F58), fontSize: 15),
-        prefixIcon: Icon(prefixIcon, color: const Color(0xFF8B949E), size: 20),
+        hintStyle: const TextStyle(color: Color(0xFFD1D5DB), fontSize: 15),
+        prefixIcon: Icon(prefixIcon, color: const Color(0xFF9CA3AF), size: 20),
         prefixIconConstraints: const BoxConstraints(
           minWidth: 48,
           minHeight: 48,
         ),
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: const Color(0xFF161B22),
+        fillColor: const Color(0xFFF9FAFB),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 16,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF30363D), width: 1),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF30363D), width: 1),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -340,13 +336,13 @@ class _LoginViewState extends State<LoginView> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFDA3633), width: 1),
+          borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFDA3633), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
         ),
-        errorStyle: const TextStyle(color: Color(0xFFFF7B72), fontSize: 12),
+        errorStyle: const TextStyle(color: Color(0xFFDC2626), fontSize: 12),
       ),
     );
   }
