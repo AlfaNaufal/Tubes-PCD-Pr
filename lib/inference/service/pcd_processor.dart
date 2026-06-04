@@ -72,14 +72,15 @@ class PcdProcessor {
     return [inner];
   }
 
-  // static img.Image applyPCDFilters(img.Image image) {
-  //   img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
-  //   img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
-  //   img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
-  //   return smoothed;
-  // }
   static img.Image applyPCDFilters(img.Image image) {
     return image;
+  }
+
+  static img.Image applyPCDFiltersForReport(img.Image image) {
+    img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
+    img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
+    img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
+    return smoothed;
   }
 
   static img.Image processForReport(
@@ -88,7 +89,7 @@ class PcdProcessor {
     num rotationAngle = 90,
   }) {
     final resized = resize(rgbImage, targetSize);
-    final pcdProcessed = applyPCDFilters(resized);
+    final pcdProcessed = applyPCDFiltersForReport(resized);
     final rotated = img.copyRotate(pcdProcessed, angle: rotationAngle);
     return rotated;
   }

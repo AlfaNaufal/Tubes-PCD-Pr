@@ -138,7 +138,6 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
     }
 
     if (message is FramePayload) {
-      final sw = Stopwatch()..start();
       final rgb = PcdProcessor.convertYUV420toRGB(message.cameraImage);
       if (rgb == null) {
         initData.mainSendPort.send(IsolateResponse(results: <ApdResult>[]));
@@ -166,10 +165,6 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
           }).toList();
 
       Uint8List? jpgBytes;
-
-      final reportImage = PcdProcessor.processForReport(rgb);
-
-      jpgBytes = Uint8List.fromList(img.encodeJpg(reportImage, quality: 85));
       if (_shouldCaptureNext) {
         final reportImage = PcdProcessor.processForReport(rgb);
 
