@@ -1,6 +1,8 @@
 // lib/auth/controller/auth_controller.dart
 
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../model/user_model.dart';
 
 /// State enum untuk status autentikasi
@@ -10,12 +12,16 @@ enum AuthStatus { idle, loading, authenticated, error }
 ///
 /// Tanggung jawab:
 /// - Login dengan email + password
-/// - Penyimpanan sesi user (in-memory)
+/// - Auto login: sesi disimpan ke SharedPreferences, restore saat app dibuka
+/// - Logout: hapus sesi dari memory + SharedPreferences
 /// - RBAC: expose role user agar view dapat menyesuaikan tampilan
 class AuthController extends ChangeNotifier {
   AuthStatus _status = AuthStatus.idle;
   UserModel? _currentUser;
   String? _errorMessage;
+
+  // Key untuk SharedPreferences
+  static const _kSessionKey = 'apd_guard_session';
 
   AuthStatus get status => _status;
   UserModel? get currentUser => _currentUser;
@@ -23,17 +29,45 @@ class AuthController extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get isLoading => _status == AuthStatus.loading;
 
-  // ── Login ────────────────────────────────────────────────────────────────
+  // ── Auto Login ────────────────────────────────────────────────────────────
+
+  /// Dipanggil sekali saat app start (di main.dart sebelum runApp).
+  /// Jika ada sesi tersimpan, restore langsung ke authenticated.
+  Future<void> tryRestoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sessionJson = prefs.getString(_kSessionKey);
+
+      if (sessionJson == null) return; // Tidak ada sesi → tetap idle
+
+      final map = jsonDecode(sessionJson) as Map<String, dynamic>;
+      final user = UserModel.fromMap(map);
+
+      // Validasi role tidak unknown sebelum restore
+      if (user.role == UserRole.unknown) {
+        await prefs.remove(_kSessionKey);
+        return;
+      }
+
+      _currentUser = user;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+    } catch (e) {
+      // Sesi corrupt → hapus dan mulai fresh
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSessionKey);
+      debugPrint('Session restore failed: $e');
+    }
+  }
+
+  // ── Login ─────────────────────────────────────────────────────────────────
 
   /// Login menggunakan email dan password.
-  /// Saat ini menggunakan mock data yang sesuai dengan dokumen aktual
-  /// di MongoDB Atlas (apd_detection_db > users).
-  /// TODO: ganti dengan MongoDB query + bcrypt verify dari Proyek 4.
+  /// Setelah berhasil, sesi disimpan ke SharedPreferences untuk auto login.
   Future<void> login({required String email, required String password}) async {
     _setLoading();
 
     try {
-      // Simulasi network delay
       await Future.delayed(const Duration(milliseconds: 800));
 
       final user = _mockAuthenticate(email: email, password: password);
@@ -42,6 +76,9 @@ class AuthController extends ChangeNotifier {
         _setError('Email atau password salah.');
         return;
       }
+
+      // Simpan sesi ke SharedPreferences
+      await _saveSession(user);
 
       _currentUser = user;
       _status = AuthStatus.authenticated;
@@ -52,25 +89,37 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// Logout: hapus sesi dan kembali ke idle
-  void logout() {
+  // ── Logout ────────────────────────────────────────────────────────────────
+
+  /// Logout: hapus sesi dari memory DAN SharedPreferences.
+  Future<void> logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kSessionKey);
+    } catch (e) {
+      debugPrint('Logout clear session error: $e');
+    }
+
     _currentUser = null;
     _status = AuthStatus.idle;
     _errorMessage = null;
     notifyListeners();
   }
 
-  // ── RBAC Helpers ─────────────────────────────────────────────────────────
+  // ── RBAC Helpers ──────────────────────────────────────────────────────────
 
-  /// Cek apakah user yang login boleh akses rute tertentu.
-  /// Supervisor bisa akses semua; HSE Inspector hanya role-nya sendiri.
   bool canAccess(UserRole requiredRole) {
     if (_currentUser == null) return false;
     if (_currentUser!.role == UserRole.supervisor) return true;
     return _currentUser!.role == requiredRole;
   }
 
-  // ── Private Helpers ──────────────────────────────────────────────────────
+  // ── Private Helpers ───────────────────────────────────────────────────────
+
+  Future<void> _saveSession(UserModel user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kSessionKey, jsonEncode(user.toMap()));
+  }
 
   void _setLoading() {
     _status = AuthStatus.loading;
@@ -84,12 +133,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mock auth — data SESUAI dengan dokumen aktual di MongoDB Atlas.
-  ///
-  /// Screenshot MongoDB menunjukkan:
-  ///   Doc 1: email "budi@k3.com",       password "inspector123",  role "hse_inspector"
-  ///   Doc 2: email "supervisor@k3.com", password "supervisor123", role "hse_supervisor"
-  ///
+  /// Mock auth — sesuai data MongoDB Atlas.
   /// TODO: Ganti dengan MongoDB query + bcrypt.checkpw() saat integrasi penuh.
   UserModel? _mockAuthenticate({
     required String email,
@@ -100,7 +144,7 @@ class AuthController extends ChangeNotifier {
         '_id': '69fdeecee2d5ab000000001',
         'name': 'Budi Santoso',
         'email': 'budi@k3.com',
-        'password': 'inspector123', // sesuai MongoDB Atlas screenshot
+        'password': 'inspector123',
         'role': 'hse_inspector',
         'created_at': '2026-05-08T14:10:22.000Z',
       },
@@ -109,7 +153,7 @@ class AuthController extends ChangeNotifier {
         'name': 'Admin Supervisor',
         'email': 'supervisor@k3.com',
         'password': 'supervisor123',
-        'role': 'hse_supervisor', // sesuai MongoDB Atlas screenshot
+        'role': 'hse_supervisor',
         'created_at': '2026-05-09T08:36:00.000Z',
       },
     ];
