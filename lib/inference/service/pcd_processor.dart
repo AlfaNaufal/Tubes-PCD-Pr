@@ -79,8 +79,7 @@ class PcdProcessor {
   static img.Image applyPCDFiltersForReport(img.Image image) {
     img.Image adjusted = img.adjustColor(image, brightness: 1.1, contrast: 1.2);
     img.Image gammaCorrected = img.adjustColor(adjusted, gamma: 1.2);
-    img.Image smoothed = img.gaussianBlur(gammaCorrected, radius: 1);
-    return smoothed;
+    return gammaCorrected;
   }
 
   static img.Image processForReport(
