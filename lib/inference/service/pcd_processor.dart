@@ -85,12 +85,15 @@ class PcdProcessor {
 
   static img.Image processForReport(
     img.Image rgbImage, {
-    int targetSize = 720,
     num rotationAngle = 90,
   }) {
-    final resized = resize(rgbImage, targetSize);
-    final pcdProcessed = applyPCDFiltersForReport(resized);
-    final rotated = img.copyRotate(pcdProcessed, angle: rotationAngle);
-    return rotated;
+    final rotated = img.copyRotate(rgbImage, angle: rotationAngle);
+    final resized = img.copyResize(
+      rotated,
+      width: 480,
+      height: 720,
+      interpolation: img.Interpolation.linear,
+    );
+    return applyPCDFiltersForReport(resized);
   }
 }
