@@ -251,13 +251,33 @@ class DashboardView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.memory(
-                        report.imageBytes,
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.contain,
+                    GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder:
+                              (_) => Dialog(
+                                backgroundColor: Colors.black,
+                                insetPadding: EdgeInsets.zero,
+                                child: InteractiveViewer(
+                                  minScale: 0.5,
+                                  maxScale: 4.0,
+                                  child: Image.memory(
+                                    report.imageBytes,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(
+                          report.imageBytes,
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -299,6 +319,9 @@ class DashboardView extends StatelessWidget {
                               'no_helmet': 'Tanpa Helm ✗',
                               'vest': 'Rompi ✓',
                               'no_vest': 'Tanpa Rompi ✗',
+                              'gloves': 'Sarung Tangan ✓',
+                              'shoes': 'Sepatu ✓',
+                              'person': 'Pekerja ✓',
                             }[d.label] ??
                             d.label;
 
