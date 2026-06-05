@@ -441,50 +441,30 @@ class InspectionHomeView extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed:
-                  () => Navigator.of(context).pushNamed('/inspection/camera'),
-              icon: const Icon(Icons.videocam_outlined, size: 20),
-              label: const Text(
-                'Mulai Deteksi APD',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB800),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton.icon(
+          onPressed:
+              () => Navigator.of(context).pushNamed('/inspection/camera'),
+          icon: const Icon(Icons.videocam_outlined, size: 20),
+          label: const Text(
+            'Mulai Deteksi APD',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
             ),
           ),
-          const SizedBox(height: 12),
-          
-          // ── TOMBOL SEMENTARA UNTUK TEST OFFLINE ──
-          TextButton(
-            onPressed: () {
-              // Pastikan import MockTestView sudah ditambahkan di atas
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const MockTestView()),
-              );
-            },
-            child: const Text(
-              'Buka Halaman Test Offline Sync',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFFB800),
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
+            elevation: 0,
           ),
-        ],
+        ),
       ),
     );
   }
