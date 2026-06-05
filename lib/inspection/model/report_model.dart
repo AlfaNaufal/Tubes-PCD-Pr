@@ -79,7 +79,7 @@ class ReportModel extends HiveObject {
   int get noVestCount => noVestViolation ? 1 : 0;
 
   Map<String, dynamic> toMongoMap({
-    required String userId,
+    required dynamic userId,
     required String imageUrl,
   }) {
     return {
@@ -88,7 +88,7 @@ class ReportModel extends HiveObject {
       'worker_name': workerName,
       'site': site,
       'division': division,
-      'timestamp': timestamp.toIso8601String(),
+      'timestamp': timestamp,
       'image_url': imageUrl,
       'total_violations':
           noHelmetCount + noVestCount + noGlovesCount + noShoesCount,

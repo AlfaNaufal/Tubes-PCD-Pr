@@ -30,8 +30,13 @@ class SyncService {
         // (Opsional) Upload imageBytes ke AWS S3/Firebase Storage untuk dapat URL
         String imageUrl = "url_gambar_sementara";
 
+        final validObjectId = ObjectId();
+
         await collection.insertOne(
-          report.toMongoMap(userId: report.inspectorName, imageUrl: imageUrl),
+          report.toMongoMap(
+            userId: validObjectId,
+            imageUrl: imageUrl
+          ),
         );
 
         // 4. Update status di lokal (Hive) menjadi true
