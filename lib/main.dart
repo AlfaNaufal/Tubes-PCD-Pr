@@ -57,20 +57,36 @@ void main() async {
   final dashboardController = DashboardController();
   await dashboardController.init();
 
-  runApp(APDGuardApp(dashboardController: dashboardController));
+  // ── Auto login: restore sesi sebelum runApp ─────────────────────────────
+  // AuthController dibuat di sini agar tryRestoreSession() selesai
+  // sebelum widget tree dibangun — langsung masuk tanpa loading screen.
+  final authController = AuthController();
+  await authController.tryRestoreSession();
+
+  runApp(
+    APDGuardApp(
+      dashboardController: dashboardController,
+      authController: authController,
+    ),
+  );
 }
 
 class APDGuardApp extends StatelessWidget {
   final DashboardController dashboardController;
+  final AuthController authController;
 
-  const APDGuardApp({super.key, required this.dashboardController});
+  const APDGuardApp({
+    super.key,
+    required this.dashboardController,
+    required this.authController,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ── Role 1: Auth ────────────────────────────────────────────────────
-        ChangeNotifierProvider(create: (_) => AuthController()),
+        // ── Role 1: Auth — gunakan instance yang sudah restore session ────────
+        ChangeNotifierProvider.value(value: authController),
 
         // ── Role 4: Dashboard Supervisor ────────────────────────────────────
         ChangeNotifierProvider.value(value: dashboardController),
