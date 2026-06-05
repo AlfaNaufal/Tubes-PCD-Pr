@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
+import 'dart:typed_data';
 
 class PcdProcessor {
   static img.Image? convertYUV420toRGB(CameraImage cameraImage) {
@@ -35,8 +36,8 @@ class PcdProcessor {
     return image;
   }
 
+  // Revisi resize untuk resolusi kamera apapun
   static img.Image resize(img.Image image, int size) {
-    // Letterbox: scale fit, pad sisanya dengan abu-abu
     final scaleX = size / image.width;
     final scaleY = size / image.height;
     final scale = scaleX < scaleY ? scaleX : scaleY;
@@ -56,20 +57,19 @@ class PcdProcessor {
     return canvas;
   }
 
-  static List<List<List<List<double>>>> normalize(img.Image image) {
+  static Float32List normalizeToFloat32(img.Image image) {
     final int size = image.width;
-    final inner = List.generate(
-      size,
-      (y) => List.generate(size, (x) {
+    final buffer = Float32List(size * size * 3);
+    int idx = 0;
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
         final pixel = image.getPixel(x, y);
-        return [
-          pixel.r.toDouble() / 255.0,
-          pixel.g.toDouble() / 255.0,
-          pixel.b.toDouble() / 255.0,
-        ];
-      }),
-    );
-    return [inner];
+        buffer[idx++] = pixel.r.toDouble() / 255.0;
+        buffer[idx++] = pixel.g.toDouble() / 255.0;
+        buffer[idx++] = pixel.b.toDouble() / 255.0;
+      }
+    }
+    return buffer;
   }
 
   static img.Image applyPCDFilters(img.Image image) {
@@ -82,17 +82,29 @@ class PcdProcessor {
     return gammaCorrected;
   }
 
+  // processForReport mengikuti resolusi asli, tidak hardcode 480x720
   static img.Image processForReport(
     img.Image rgbImage, {
     num rotationAngle = 90,
   }) {
+    // Rotate image
     final rotated = img.copyRotate(rgbImage, angle: rotationAngle);
+
+    final maxSize = 720;
+    final scaleX = maxSize / rotated.width;
+    final scaleY = maxSize / rotated.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+
+    final targetW = (rotated.width * scale).round();
+    final targetH = (rotated.height * scale).round();
+
     final resized = img.copyResize(
       rotated,
-      width: 480,
-      height: 720,
+      width: targetW,
+      height: targetH,
       interpolation: img.Interpolation.linear,
     );
+
     return applyPCDFiltersForReport(resized);
   }
 }

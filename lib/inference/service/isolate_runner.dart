@@ -151,11 +151,12 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
 
       // FIX: normalize sekarang return 4D [1][H][W][C]
       // final normalized = PcdProcessor.normalize(pcdProcessed);
-      final List<List<List<List<double>>>> normalized = PcdProcessor.normalize(
+      final Float32List normalized = PcdProcessor.normalizeToFloat32(
         pcdProcessed,
       );
 
-      final rawResults = interpreter.run(normalized);
+      final rawResults = interpreter.runFloat32(normalized);
+
       final results =
           rawResults.where((r) {
             return r.left.isFinite &&
