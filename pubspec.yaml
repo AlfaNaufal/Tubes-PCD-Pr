@@ -36,6 +36,7 @@ dependencies:
 
   # ── Config ────────────────────────────────────────────────────────────────
   flutter_dotenv: ^5.2.1         # Alternatif .env loader (runtime)
+  connectivity_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:

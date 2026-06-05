@@ -30,7 +30,7 @@ class SyncService {
         // (Opsional) Upload imageBytes ke AWS S3/Firebase Storage untuk dapat URL
         String imageUrl = "url_gambar_sementara";
 
-        await collection.insert(
+        await collection.insertOne(
           report.toMongoMap(userId: report.inspectorName, imageUrl: imageUrl),
         );
 

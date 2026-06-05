@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../core/services/local_db_service.dart';
 import '../../core/services/sync_service.dart';
 import '../model/report_model.dart';
@@ -19,25 +20,26 @@ class InspectionController extends ChangeNotifier {
   Future<void> _init() async {
     await _localDbService.openBox();
     _syncService.syncOfflineData();
+
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> result) {
+      if (result.contains(ConnectivityResult.mobile) || result.contains(ConnectivityResult.wifi)) {
+        print('Internet terhubung kembali! Memulai sync background...');
+        _syncService.syncOfflineData();
+      }
+    });
   }
 
   // 2. Taruh fungsinya di sini!
   void onDetectionComplete(ReportModel newReport) async {
     try {
-      // OFFLINE FIRST: Simpan langsung ke Hive secepat mungkin
       await _localDbService.saveReport(newReport);
       
-      // Update UI (misal memberi tahu View bahwa data berhasil disimpan)
       notifyListeners();
 
-      // Lakukan sinkronisasi di background
-      // Jika offline, akan gagal diam-diam. Jika online, akan terkirim.
       _syncService.syncOfflineData(); 
       
     } catch (e) {
       print("Gagal menyimpan data ke lokal: $e");
     }
   }
-
-  // Tambahkan logic lain terkait inspeksi kamera di sini...
 }
