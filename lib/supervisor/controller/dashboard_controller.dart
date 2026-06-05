@@ -3,7 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../inspection/model/report_model.dart';
 
 class DashboardController extends ChangeNotifier {
-  static const String boxName = 'reportsBox';
+  static const String boxName = 'reports_box';
   List<ReportModel> _reports = [];
 
   List<ReportModel> get reports => _reports;

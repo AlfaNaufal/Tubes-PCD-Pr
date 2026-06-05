@@ -32,7 +32,8 @@ dependencies:
   path_provider: ^2.1.4          # Lokasi direktori Hive di perangkat
 
   # ── Config ────────────────────────────────────────────────────────────────
-  flutter_dotenv: ^5.2.1         # .env loader (runtime)
+  flutter_dotenv: ^5.2.1         # Alternatif .env loader (runtime)
+  connectivity_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:

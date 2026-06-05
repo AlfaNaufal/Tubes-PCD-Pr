@@ -30,6 +30,9 @@ class ReportModel extends HiveObject {
   @HiveField(7)
   final String division;
 
+  @HiveField(8)
+  bool isSynced;
+
   ReportModel({
     required this.id,
     required this.timestamp,
@@ -39,6 +42,7 @@ class ReportModel extends HiveObject {
     required this.workerName,
     required this.site,
     required this.division,
+    this.isSynced = false,
   });
 
   // Dataset: boots, gloves, helmet, human, vest

@@ -22,7 +22,7 @@ import 'supervisor/view/dashboard_view.dart';
 // ── Stub imports — uncomment saat role lain sudah siap ───────────────────
 // import 'core/env_config.dart';                             // Role 3
 // import 'dashboard/view/history_view.dart';                // Role 4
-// import 'inspection/controller/inspection_controller.dart';// Role 2
+import 'inspection/controller/inspection_controller.dart'; // Role 2
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +47,7 @@ void main() async {
 
   Hive.registerAdapter(ApdResultAdapter());
   Hive.registerAdapter(ReportModelAdapter());
+
   // Hive.registerAdapter(InspectionSessionModelAdapter());
 
   // ── Env config init ───────────────────────────────────────────────────────
@@ -56,6 +57,8 @@ void main() async {
   // ── Inisialisasi Database Controller Supervisor ───────────────────────────
   final dashboardController = DashboardController();
   await dashboardController.init();
+
+  // await Hive.openBox<ReportModel>('reports_box');
 
   // ── Auto login: restore sesi sebelum runApp ─────────────────────────────
   // AuthController dibuat di sini agar tryRestoreSession() selesai
@@ -92,7 +95,7 @@ class APDGuardApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: dashboardController),
 
         // ── Role 2+3: Inspection (uncomment saat siap) ──────────────────────
-        // ChangeNotifierProvider(create: (_) => InspectionController()),
+        ChangeNotifierProvider(create: (_) => InspectionController()),
       ],
       child: MaterialApp(
         title: 'APD Guard',

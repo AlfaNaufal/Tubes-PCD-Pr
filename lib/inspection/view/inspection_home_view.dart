@@ -2,8 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../auth/controller/auth_controller.dart';
 import '../../auth/model/user_model.dart';
+
+import 'mock_tests_view.dart';
 
 class InspectionHomeView extends StatelessWidget {
   const InspectionHomeView({super.key});
@@ -160,6 +163,56 @@ class InspectionHomeView extends StatelessWidget {
               ),
             ),
           ),
+          StreamBuilder<List<ConnectivityResult>>(
+            stream: Connectivity().onConnectivityChanged,
+            builder: (context, snapshot) {
+              bool isOffline = false;
+
+              if (snapshot.hasData) {
+                isOffline = snapshot.data!.contains(ConnectivityResult.none);
+              }
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: isOffline
+                      ? Colors.redAccent.withValues(alpha: 0.15)
+                      : Colors.green.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isOffline
+                        ? Colors.redAccent.withValues(alpha: 0.5)
+                        : Colors.green.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOffline ? Icons.wifi_off_rounded : Icons.wifi_rounded,
+                      size: 14,
+                      color: isOffline ? Colors.redAccent : Colors.green,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isOffline ? "Offline" : "Online",
+                      style: TextStyle(
+                        color: isOffline ? Colors.redAccent : Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           // ── FIX: pakai ctx dari Consumer, bukan context outer ──────────
           Consumer<AuthController>(
             builder:
@@ -388,30 +441,50 @@ class InspectionHomeView extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFE5E7EB), width: 1)),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton.icon(
-          onPressed:
-              () => Navigator.of(context).pushNamed('/inspection/camera'),
-          icon: const Icon(Icons.videocam_outlined, size: 20),
-          label: const Text(
-            'Mulai Deteksi APD',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed:
+                  () => Navigator.of(context).pushNamed('/inspection/camera'),
+              icon: const Icon(Icons.videocam_outlined, size: 20),
+              label: const Text(
+                'Mulai Deteksi APD',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB800),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
             ),
           ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFFB800),
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 12),
+          
+          // ── TOMBOL SEMENTARA UNTUK TEST OFFLINE ──
+          TextButton(
+            onPressed: () {
+              // Pastikan import MockTestView sudah ditambahkan di atas
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const MockTestView()),
+              );
+            },
+            child: const Text(
+              'Buka Halaman Test Offline Sync',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            elevation: 0,
           ),
-        ),
+        ],
       ),
     );
   }
