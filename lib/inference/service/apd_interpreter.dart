@@ -215,7 +215,7 @@ class ApdInterpreter {
         ),
       );
     }
-    return _applyNms(results, 0.50);
+    return _applyNms(results, 0.35);
   }
 
   List<ApdResult> _applyNms(List<ApdResult> detections, double iouThreshold) {
@@ -231,7 +231,11 @@ class ApdInterpreter {
       detections.removeWhere((d) {
         if (d.label != current.label) return false;
 
-        return _calculateIou(current, d) > iouThreshold;
+        final iou = _calculateIou(current, d);
+        final dx = (current.left + current.right) / 2 - (d.left + d.right) / 2;
+        final dy = (current.top + current.bottom) / 2 - (d.top + d.bottom) / 2;
+        final centerDist = dx * dx + dy * dy;
+        return iou > 0.35 || centerDist < 0.002;
       });
     }
 

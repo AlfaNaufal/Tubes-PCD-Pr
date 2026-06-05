@@ -139,9 +139,21 @@ class DashboardView extends StatelessWidget {
                                         '${report.noVestCount} Tanpa Rompi',
                                         Colors.orangeAccent,
                                       ),
+                                    if (report.noGlovesCount > 0)
+                                      _buildBadge(
+                                        '${report.noGlovesCount} Tanpa Sarung Tangan',
+                                        Colors.orange,
+                                      ),
+                                    if (report.noShoesCount > 0)
+                                      _buildBadge(
+                                        '${report.noShoesCount} Tanpa Sepatu',
+                                        Colors.deepOrange,
+                                      ),
                                     if (report.detections.isNotEmpty &&
                                         report.noHelmetCount == 0 &&
-                                        report.noVestCount == 0)
+                                        report.noVestCount == 0 &&
+                                        report.noGlovesCount == 0 &&
+                                        report.noShoesCount == 0)
                                       _buildBadge(
                                         'Aman Sesuai Prosedur',
                                         Colors.green,
