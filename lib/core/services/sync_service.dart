@@ -26,8 +26,13 @@ class SyncService {
       for (var report in unsyncedReports) {
         String imageUrl = "url_gambar_sementara";
 
+        final validObjectId = ObjectId();
+
         await collection.insertOne(
-          report.toMongoMap(userId: report.inspectorName, imageUrl: imageUrl),
+          report.toMongoMap(
+            userId: validObjectId,
+            imageUrl: imageUrl
+          ),
         );
 
         await _localDb.markAsSynced(report.id);
