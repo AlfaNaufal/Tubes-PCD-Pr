@@ -59,7 +59,6 @@ class ApdInterpreter {
   }
 
   static Future<Uint8List> _loadAssetBytes(String path) async {
-    // Hanya dipanggil dari main isolate
     final byteData = await _rootBundleLoad(path);
     return byteData;
   }
@@ -86,12 +85,12 @@ class ApdInterpreter {
     switch (label) {
       case 'helmet':
         if (width > 0.45 || height > 0.45) return false;
-        if (confidence < 0.50) return false; // minimum confidence
+        if (confidence < 0.50) return false;
         break;
 
       case 'vest':
         if (height < 0.08) return false;
-        if (width > 0.80) return false; // vest tidak selebar frame
+        if (width > 0.80) return false;
         break;
 
       case 'person':
@@ -106,8 +105,6 @@ class ApdInterpreter {
   }
 
   List<ApdResult> runFloat32(Float32List input) {
-    final inputBuffer = input.buffer.asUint8List();
-
     final output = List.generate(
       1,
       (_) => List.generate(11, (_) => Float32List(8400)),
@@ -198,8 +195,6 @@ class ApdInterpreter {
       )) {
         continue;
       }
-
-      // Filter box aneh
 
       print(
         '$label '

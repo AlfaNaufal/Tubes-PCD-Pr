@@ -1,5 +1,3 @@
-// lib/overlay/apd_overlay_widget.dart
-//
 // Widget utama overlay deteksi APD.
 //
 // ── Tanggung jawab ──────────────────────────────────────────────────────────
@@ -9,13 +7,6 @@
 //   - Meneruskan ukuran widget ke OverlayController via LayoutBuilder
 //   - Menghubungkan CameraManager.previewSize ke OverlayController
 //
-// ── Cara pakai ──────────────────────────────────────────────────────────────
-//
-//   // Di widget tree, setelah CameraManager dan IsolateRunner siap:
-//   ChangeNotifierProvider(
-//     create: (_) => OverlayController()..startListening(),
-//     child: ApdOverlayWidget(cameraManager: _cameraManager),
-//   )
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -29,10 +20,7 @@ import 'feedback_service.dart';
 class ApdOverlayWidget extends StatefulWidget {
   final CameraManager cameraManager;
 
-  /// Tampilkan info debug (FPS, jumlah box, ukuran preview).
   final bool showDebugInfo;
-
-  /// Tampilkan persentase confidence di tiap label chip.
   final bool showConfidence;
 
   const ApdOverlayWidget({
@@ -55,7 +43,6 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
   void didUpdateWidget(ApdOverlayWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Sync preview size jika CameraManager berubah.
     if (oldWidget.cameraManager != widget.cameraManager) {
       _syncPreviewSize();
     }
@@ -81,7 +68,6 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
   Widget build(BuildContext context) {
     return Consumer<OverlayController>(
       builder: (context, controller, _) {
-        // Sync preview size setiap kali CameraManager berubah status.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           controller.updatePreviewSize(widget.cameraManager.previewSize);
@@ -90,7 +76,6 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
 
         return LayoutBuilder(
           builder: (context, constraints) {
-            // Beritahu controller ukuran widget terkini.
             final widgetSize = Size(
               constraints.maxWidth,
               constraints.maxHeight,
@@ -114,12 +99,10 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
                   ),
                 ),
 
-                // ── Layer 2: Debug Overlay (di atas status banner) ───────────
-                // Diletakkan SEBELUM status banner agar tertimpa banner jika
-                // konten terlalu tinggi (urutan Stack = bawah ke atas).
+                // ── Layer 2: Debug Overlay ───────────
                 if (widget.showDebugInfo)
                   Positioned(
-                    bottom: 52, // tepat di atas _StatusBanner (~50 px)
+                    bottom: 52,
                     left: 8,
                     right: 8,
                     child: _DebugOverlay(
@@ -130,7 +113,7 @@ class _ApdOverlayWidgetState extends State<ApdOverlayWidget> {
                     ),
                   ),
 
-                // ── Layer 3: Status Banner (paling bawah layar) ──────────────
+                // ── Layer 3: Status Banner ──────────────
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -246,7 +229,6 @@ class _DebugOverlay extends StatelessWidget {
           fontFamily: 'monospace',
           height: 1.5,
         ),
-        // ── Tampilan horizontal satu baris ──────────────────────────────
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,

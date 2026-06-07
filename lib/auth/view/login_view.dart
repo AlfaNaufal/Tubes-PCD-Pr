@@ -1,5 +1,3 @@
-// lib/auth/view/login_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controller/auth_controller.dart';
@@ -51,7 +49,7 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // ← light untuk outdoor visibility
+      backgroundColor: Colors.white,
       body: Consumer<AuthController>(
         builder: (context, auth, _) {
           return SafeArea(
@@ -199,9 +197,10 @@ class _LoginViewState extends State<LoginView> {
                             color: const Color(0xFF9CA3AF),
                             size: 20,
                           ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
+                          onPressed:
+                              () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                         ),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
@@ -221,36 +220,39 @@ class _LoginViewState extends State<LoginView> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: auth.isLoading
-                              ? null
-                              : () => _onLoginPressed(auth),
+                          onPressed:
+                              auth.isLoading
+                                  ? null
+                                  : () => _onLoginPressed(auth),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFFB800),
                             foregroundColor: Colors.black,
-                            disabledBackgroundColor:
-                                const Color(0xFFFFB800).withOpacity(0.4),
+                            disabledBackgroundColor: const Color(
+                              0xFFFFB800,
+                            ).withOpacity(0.4),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                             elevation: 0,
                           ),
-                          child: auth.isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.black54,
+                          child:
+                              auth.isLoading
+                                  ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.black54,
+                                    ),
+                                  )
+                                  : const Text(
+                                    'Masuk',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
-                                )
-                              : const Text(
-                                  'Masuk',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
                         ),
                       ),
 

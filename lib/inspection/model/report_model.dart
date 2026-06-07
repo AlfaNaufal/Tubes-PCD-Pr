@@ -45,8 +45,6 @@ class ReportModel extends HiveObject {
     this.isSynced = false,
   });
 
-  // Dataset: boots, gloves, helmet, human, vest
-  // Tidak ada kelas no_helmet/no_vest — pelanggaran = tidak terdeteksi helm/vest
   bool get helmetDetected =>
       detections.any((r) => r.label == 'helmet' && r.confidence > 0.15);
 

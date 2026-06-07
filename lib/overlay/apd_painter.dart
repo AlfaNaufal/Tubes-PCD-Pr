@@ -1,5 +1,3 @@
-// lib/overlay/apd_painter.dart
-//
 // CustomPainter yang menggambar bounding box dan label hasil deteksi APD
 // di atas preview kamera.
 //
@@ -24,11 +22,10 @@ import 'coordinate_mapper.dart';
 /// Konvensi penamaan label mengikuti [apd_labels.txt]:
 ///   - Label "compliant" (APD terpasang)  → warna hijau
 ///   - Label "non_compliant" (APD tidak ada) → warna merah
-///   - Label tidak dikenal                → abu-abu (fallback)
+///   - Label tidak dikenal → abu-abu
 class ApdColorScheme {
   ApdColorScheme._();
 
-  /// Pemetaan label → warna. Key harus lowercase dan trimmed.
   static const Map<String, Color> _labelColors = {
     'helmet': Color(0xFF00E676),
     'vest': Color(0xFF00E676),
@@ -41,14 +38,12 @@ class ApdColorScheme {
     'bare-arms': Color(0xFFFF1744),
   };
 
-  /// Warna fallback untuk label yang tidak terdaftar.
-  static const Color _fallback = Color(0xFF78909C); // blue-grey
+  /// Warna untuk label yang tidak terdaftar
+  static const Color _fallback = Color(0xFF78909C);
 
-  /// Mendapatkan warna berdasarkan label. Case-insensitive.
   static Color forLabel(String label) =>
       _labelColors[label.toLowerCase().trim()] ?? _fallback;
 
-  /// Apakah label ini merepresentasikan ketidakpatuhan APD.
   static bool isNonCompliant(String label) {
     final value = label.toLowerCase().trim();
 
@@ -58,21 +53,19 @@ class ApdColorScheme {
 
 // ── Konfigurasi Visual ─────────────────────────────────────────────────────
 
-/// Konstanta visual untuk rendering bounding box dan label.
-/// Dipisahkan agar mudah di-tweak tanpa menyentuh logika painter.
 class _PainterConfig {
   _PainterConfig._();
 
   static const double boxStrokeWidth = 2.5;
   static const double boxCornerRadius = 6.0;
-  static const double boxAlpha = 0.85; // opacity outline
+  static const double boxAlpha = 0.85;
 
-  static const double labelPaddingH = 8.0; // padding horizontal chip label
-  static const double labelPaddingV = 4.0; // padding vertikal chip label
+  static const double labelPaddingH = 8.0;
+  static const double labelPaddingV = 4.0;
   static const double labelCornerRadius = 4.0;
   static const double labelFontSize = 11.5;
   static const double labelConfidenceFontSize = 10.0;
-  static const double labelOffsetY = 4.0; // jarak chip dari atas box
+  static const double labelOffsetY = 4.0;
 
   static const Color labelTextColor = Color(0xFFFFFFFF);
   static const double chipAlpha = 0.88;
@@ -81,21 +74,10 @@ class _PainterConfig {
 // ── Custom Painter ──────────────────────────────────────────────────────────
 
 /// Painter utama untuk overlay deteksi APD.
-///
-/// Gunakan melalui [CustomPaint]:
-/// ```dart
-/// CustomPaint(
-///   painter: ApdPainter(boxes: mappedBoxes),
-///   child: ...,
-/// )
-/// ```
+
 class ApdPainter extends CustomPainter {
-  /// Daftar bounding box dalam screen space dari [CoordinateMapper.mapAll].
   final List<MappedBox> boxes;
-
-  /// Apakah confidence score ditampilkan di chip label.
   final bool showConfidence;
-
   const ApdPainter({required this.boxes, this.showConfidence = true});
 
   // ── Paint ──────────────────────────────────────────────────────────────────
@@ -125,7 +107,6 @@ class ApdPainter extends CustomPainter {
       const Radius.circular(_PainterConfig.boxCornerRadius),
     );
 
-    // Glow effect: gambar outline yang lebih tebal dan transparan di belakang.
     canvas.drawRRect(
       rrect,
       Paint()
@@ -144,7 +125,6 @@ class ApdPainter extends CustomPainter {
     final labelText = _formatLabel(box.label);
     final confidenceText = '${(box.confidence * 100).toStringAsFixed(0)}%';
 
-    // ── Ukur teks agar chip pas ─────────────────────────────────────────────
     final labelPainter = _buildTextPainter(
       labelText,
       _PainterConfig.labelFontSize,
@@ -166,12 +146,10 @@ class ApdPainter extends CustomPainter {
         (confPainter != null ? confPainter.width + 6 : 0);
     final chipHeight = _PainterConfig.labelPaddingV * 2 + labelPainter.height;
 
-    // ── Posisi chip: di atas kiri bounding box ──────────────────────────────
     final chipTop =
         box.screenRect.top - chipHeight - _PainterConfig.labelOffsetY;
     final chipLeft = box.screenRect.left;
 
-    // Jika chip melampaui batas atas layar, pindah ke dalam box.
     final adjustedTop = chipTop < 0 ? box.screenRect.top + 2 : chipTop;
 
     final chipRect = Rect.fromLTWH(
@@ -234,8 +212,6 @@ class ApdPainter extends CustomPainter {
     );
   }
 
-  /// Mengubah snake_case label menjadi Title Case yang lebih readable.
-  /// Contoh: "no_helm" → "No Helm", "sarung_tangan" → "Sarung Tangan"
   String _formatLabel(String raw) {
     return raw
         .split('_')

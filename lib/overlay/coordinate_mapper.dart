@@ -1,8 +1,4 @@
-// lib/overlay/coordinate_mapper.dart
-//
 // Mengkonversi koordinat raw output YOLOv8 ke Rect layar (screen space).
-//
-// ── Mengapa class ini kritis ────────────────────────────────────────────────
 //
 // YOLOv8 output format (dari ApdInterpreter._parseOutput):
 //   data[0][i] → x_center  (disimpan di ApdResult.left)
@@ -27,15 +23,9 @@ import 'package:flutter/widgets.dart';
 import '../inference/model/apd_result.dart';
 import 'dart:math' as math;
 
-/// Hasil konversi: bounding box dalam koordinat layar + metadata asli.
 class MappedBox {
-  /// Rect dalam screen space (unit: logical pixel).
   final Rect screenRect;
-
-  /// Label APD, misalnya "helm", "rompi", "no_helm".
   final String label;
-
-  /// Confidence score [0.0 – 1.0].
   final double confidence;
 
   const MappedBox({
@@ -45,21 +35,9 @@ class MappedBox {
   });
 }
 
-/// Mapper stateless — semua fungsi adalah pure function tanpa side effect.
 class CoordinateMapper {
-  // Konstruktor privat — gunakan factory method [mapAll].
   CoordinateMapper._();
 
-  // ── Public API ─────────────────────────────────────────────────────────────
-
-  /// Mengkonversi semua [ApdResult] menjadi [MappedBox] yang siap digambar.
-  ///
-  /// Parameters:
-  /// - [results]        : output mentah dari IsolateRunner.
-  /// - [previewSize]    : ukuran preview kamera dari CameraManager.previewSize.
-  /// - [widgetSize]     : ukuran widget Stack tempat CustomPainter menggambar.
-  ///
-  /// Returns daftar [MappedBox] yang sudah di-clip agar tidak keluar layar.
   static List<MappedBox> mapAll({
     required List<ApdResult> results,
     required Size previewSize,
@@ -70,7 +48,6 @@ class CoordinateMapper {
 
     final transform = _computeTransform(previewSize, widgetSize);
 
-    // Hitung letterbox padding dari model input
     final double scaleToModel = math.min(
       modelInputSize / previewSize.width,
       modelInputSize / previewSize.height,
@@ -103,12 +80,6 @@ class CoordinateMapper {
         .toList(growable: false);
   }
 
-  // ── Private: Transform Computation ────────────────────────────────────────
-
-  /// Menghitung scale factor dan offset letterbox.
-  ///
-  /// Strategi: BoxFit.contain — preview kamera di-fit ke dalam widget
-  /// dengan mempertahankan aspect ratio (tidak crop, tidak stretch).
   static _Transform _computeTransform(Size preview, Size widget) {
     final scale = math.min(
       widget.width / preview.width,
@@ -126,8 +97,6 @@ class CoordinateMapper {
 
   // ── Private: Single Box Mapping ────────────────────────────────────────────
 
-  /// Konversi satu [ApdResult] ke [MappedBox].
-  /// Mengembalikan null jika box sepenuhnya di luar area widget.
   static MappedBox? _mapSingle(
     ApdResult result,
     _Transform transform,
@@ -138,13 +107,11 @@ class CoordinateMapper {
     double normScaleX,
     double normScaleY,
   ) {
-    // Lepas letterbox padding, remap ke normalized preview [0..1]
     final double nL = (result.left - padX) / normScaleX;
     final double nT = (result.top - padY) / normScaleY;
     final double nR = (result.right - padX) / normScaleX;
     final double nB = (result.bottom - padY) / normScaleY;
 
-    // Scale ke screen space
     final double left =
         nL * previewSize.width * transform.scale + transform.offsetX;
     final double top =
@@ -178,7 +145,6 @@ class CoordinateMapper {
 
 // ── Internal Value Object ──────────────────────────────────────────────────
 
-/// Menyimpan hasil komputasi transform agar tidak dihitung ulang per-box.
 class _Transform {
   final double scale;
   final double offsetX;

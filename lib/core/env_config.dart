@@ -1,9 +1,3 @@
-// Single source of truth untuk semua konstanta runtime aplikasi.
-//
-// Cara pakai:
-//   await dotenv.load(fileName: '.env');
-//   final threshold = EnvConfig.confidenceThreshold;
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 const double _kDefaultConfidenceThreshold = 0.5;

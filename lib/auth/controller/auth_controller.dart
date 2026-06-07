@@ -1,5 +1,3 @@
-// lib/auth/controller/auth_controller.dart
-
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,19 +6,15 @@ import '../model/user_model.dart';
 /// State enum untuk status autentikasi
 enum AuthStatus { idle, loading, authenticated, error }
 
-/// AuthController menggunakan ChangeNotifier (kompatibel dengan Provider).
-///
-/// Tanggung jawab:
 /// - Login dengan email + password
 /// - Auto login: sesi disimpan ke SharedPreferences, restore saat app dibuka
 /// - Logout: hapus sesi dari memory + SharedPreferences
-/// - RBAC: expose role user agar view dapat menyesuaikan tampilan
+/// - RBAC: login berdasarkan role user agar view dapat menyesuaikan tampilan
 class AuthController extends ChangeNotifier {
   AuthStatus _status = AuthStatus.idle;
   UserModel? _currentUser;
   String? _errorMessage;
 
-  // Key untuk SharedPreferences
   static const _kSessionKey = 'apd_guard_session';
 
   AuthStatus get status => _status;
@@ -31,19 +25,16 @@ class AuthController extends ChangeNotifier {
 
   // ── Auto Login ────────────────────────────────────────────────────────────
 
-  /// Dipanggil sekali saat app start (di main.dart sebelum runApp).
-  /// Jika ada sesi tersimpan, restore langsung ke authenticated.
   Future<void> tryRestoreSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final sessionJson = prefs.getString(_kSessionKey);
 
-      if (sessionJson == null) return; // Tidak ada sesi → tetap idle
+      if (sessionJson == null) return;
 
       final map = jsonDecode(sessionJson) as Map<String, dynamic>;
       final user = UserModel.fromMap(map);
 
-      // Validasi role tidak unknown sebelum restore
       if (user.role == UserRole.unknown) {
         await prefs.remove(_kSessionKey);
         return;
@@ -53,7 +44,6 @@ class AuthController extends ChangeNotifier {
       _status = AuthStatus.authenticated;
       notifyListeners();
     } catch (e) {
-      // Sesi corrupt → hapus dan mulai fresh
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_kSessionKey);
       debugPrint('Session restore failed: $e');
@@ -63,7 +53,6 @@ class AuthController extends ChangeNotifier {
   // ── Login ─────────────────────────────────────────────────────────────────
 
   /// Login menggunakan email dan password.
-  /// Setelah berhasil, sesi disimpan ke SharedPreferences untuk auto login.
   Future<void> login({required String email, required String password}) async {
     _setLoading();
 
@@ -77,7 +66,6 @@ class AuthController extends ChangeNotifier {
         return;
       }
 
-      // Simpan sesi ke SharedPreferences
       await _saveSession(user);
 
       _currentUser = user;
@@ -91,7 +79,6 @@ class AuthController extends ChangeNotifier {
 
   // ── Logout ────────────────────────────────────────────────────────────────
 
-  /// Logout: hapus sesi dari memory DAN SharedPreferences.
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -134,7 +121,6 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Mock auth — sesuai data MongoDB Atlas.
-  /// TODO: Ganti dengan MongoDB query + bcrypt.checkpw() saat integrasi penuh.
   UserModel? _mockAuthenticate({
     required String email,
     required String password,

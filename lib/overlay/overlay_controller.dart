@@ -1,6 +1,3 @@
-// lib/overlay/overlay_controller.dart
-//
-// ChangeNotifier yang menjadi pusat integrasi Role 3.
 //
 // ── Tanggung jawab ──────────────────────────────────────────────────────────
 //   - Subscribe ke IsolateRunner.reportStream (hasil inference dari Role 2)
@@ -23,13 +20,11 @@ import 'coordinate_mapper.dart';
 import 'feedback_service.dart';
 
 class OverlayController extends ChangeNotifier {
-  // ── Dependencies ───────────────────────────────────────────────────────────
-
   final FeedbackService _feedbackService;
 
   // ── State Publik ───────────────────────────────────────────────────────────
 
-  /// Bounding box yang sudah dikonversi ke screen space — siap digambar.
+  /// Bounding box yang sudah dikonversi ke screen space
   List<MappedBox> get mappedBoxes => List.unmodifiable(_mappedBoxes);
   List<MappedBox> _mappedBoxes = const [];
 
@@ -37,16 +32,14 @@ class OverlayController extends ChangeNotifier {
   ComplianceStatus get complianceStatus => _complianceStatus;
   ComplianceStatus _complianceStatus = ComplianceStatus.noDetection;
 
-  /// Hasil mentah dari inference terakhir (dibutuhkan Role 4 untuk Hive).
+  /// Hasil mentah dari inference terakhir
   List<ApdResult> get lastResults => List.unmodifiable(_lastResults);
   List<ApdResult> _lastResults = const [];
 
   /// Bytes JPEG dari capture laporan (null jika belum ada capture).
-  /// Role 4 mengambil nilai ini setelah [captureForReport] dipanggil.
   Uint8List? get capturedImageBytes => _capturedImageBytes;
   Uint8List? _capturedImageBytes;
 
-  /// Apakah ada capture baru yang belum dikonsumsi oleh Role 4.
   bool get hasPendingCapture => _capturedImageBytes != null;
 
   /// Ukuran widget overlay saat ini — diupdate oleh [updateWidgetSize].
@@ -70,7 +63,6 @@ class OverlayController extends ChangeNotifier {
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   /// Mulai mendengarkan stream inference dari IsolateRunner.
-  ///
   /// Harus dipanggil setelah [IsolateRunner.init()] selesai.
   void startListening() {
     _inferenceSubscription?.cancel();
@@ -80,7 +72,6 @@ class OverlayController extends ChangeNotifier {
     );
   }
 
-  /// Hentikan listener tanpa dispose controller.
   void stopListening() {
     _inferenceSubscription?.cancel();
     _inferenceSubscription = null;
@@ -102,29 +93,19 @@ class OverlayController extends ChangeNotifier {
   void updateWidgetSize(Size size) {
     if (_widgetSize == size) return;
     _widgetSize = size;
-    _remapBoxes(); // remap ulang karena ukuran berubah
+    _remapBoxes();
   }
 
-  /// Update ukuran preview kamera dari CameraManager.previewSize.
   void updatePreviewSize(Size? size) {
     if (_previewSize == size) return;
     _previewSize = size;
     _remapBoxes();
   }
 
-  /// Minta isolate untuk menyimpan frame berikutnya sebagai laporan.
-  /// Bytes JPEG akan tersedia di [capturedImageBytes] setelah frame berikutnya.
   void captureForReport() {
     IsolateRunner.captureForReport();
   }
 
-  /// Konsumsi [capturedImageBytes] — mengembalikan nilai lalu menghapusnya.
-  ///
-  /// Role 4 memanggil ini setelah menyimpan gambar ke Hive/MongoDB:
-  /// ```dart
-  /// final bytes = overlayController.consumeCapture();
-  /// if (bytes != null) await inspectionService.saveSnapshot(bytes);
-  /// ```
   Uint8List? consumeCapture() {
     final bytes = _capturedImageBytes;
     _capturedImageBytes = null;
@@ -138,19 +119,17 @@ class OverlayController extends ChangeNotifier {
 
     _lastResults = response.results;
 
-    // Simpan capture bytes jika ini adalah capture response.
     if (response.isCaptureResponse && response.capturedImageBytes != null) {
       _capturedImageBytes = response.capturedImageBytes;
     }
 
     _remapBoxes();
 
-    // Hitung status dan trigger feedback (fire-and-forget).
     final status = _feedbackService.evaluate(_mappedBoxes);
     if (status != _complianceStatus) {
       _complianceStatus = status;
     }
-    _feedbackService.triggerFeedback(status); // intentionally not awaited
+    _feedbackService.triggerFeedback(status);
 
     if (!_disposed) notifyListeners();
   }
@@ -161,8 +140,6 @@ class OverlayController extends ChangeNotifier {
 
   // ── Internal: Coordinate Remapping ────────────────────────────────────────
 
-  /// Panggil ulang CoordinateMapper dengan ukuran terkini.
-  /// Aman dipanggil kapan saja — guard null tersedia.
   void _remapBoxes() {
     if (_previewSize == null || _widgetSize == null) {
       _mappedBoxes = const [];

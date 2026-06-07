@@ -32,8 +32,6 @@ class InspectionHomeView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 32),
-
-                    // Greeting
                     Text(
                       'Selamat datang,',
                       style: TextStyle(
@@ -121,7 +119,6 @@ class InspectionHomeView extends StatelessWidget {
               ),
             ),
 
-            // ── Sticky Bottom CTA ─────────────────────────────────────────
             _buildBottomCTA(context),
           ],
         ),
@@ -179,14 +176,16 @@ class InspectionHomeView extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: isOffline
-                      ? Colors.redAccent.withValues(alpha: 0.15)
-                      : Colors.green.withValues(alpha: 0.15),
+                  color:
+                      isOffline
+                          ? Colors.redAccent.withValues(alpha: 0.15)
+                          : Colors.green.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isOffline
-                        ? Colors.redAccent.withValues(alpha: 0.5)
-                        : Colors.green.withValues(alpha: 0.5),
+                    color:
+                        isOffline
+                            ? Colors.redAccent.withValues(alpha: 0.5)
+                            : Colors.green.withValues(alpha: 0.5),
                     width: 1,
                   ),
                 ),
@@ -213,7 +212,6 @@ class InspectionHomeView extends StatelessWidget {
             },
           ),
           const SizedBox(width: 8),
-          // ── FIX: pakai ctx dari Consumer, bukan context outer ──────────
           Consumer<AuthController>(
             builder:
                 (ctx, authCtrl, _) => IconButton(
@@ -470,11 +468,9 @@ class InspectionHomeView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          
-          // ── TOMBOL SEMENTARA UNTUK TEST OFFLINE ──
+
           TextButton(
             onPressed: () {
-              // Pastikan import MockTestView sudah ditambahkan di atas
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => const MockTestView()),
               );
@@ -489,7 +485,6 @@ class InspectionHomeView extends StatelessWidget {
     );
   }
 
-  // ── FIX: terima BuildContext yang benar (dari Consumer) ──────────────────
   void _confirmLogout(BuildContext context, AuthController auth) {
     showDialog<void>(
       context: context,
@@ -510,7 +505,6 @@ class InspectionHomeView extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                // ── FIX: pakai dialogContext untuk tutup dialog ──────────────
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 child: const Text(
                   'Batal',
@@ -519,15 +513,11 @@ class InspectionHomeView extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // 1. Tutup dialog
                   Navigator.of(dialogContext).pop();
-                  // 2. Logout — ubah state AuthController
                   auth.logout();
-                  // 3. Clear seluruh navigation stack, kembali ke /login
-                  Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/login',
-                    (route) => false, // hapus semua route di stack
-                  );
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/login', (route) => false);
                 },
                 child: const Text(
                   'Logout',

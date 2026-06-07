@@ -13,27 +13,23 @@ import 'auth/view/login_view.dart';
 import 'inspection/view/camera_view.dart';
 import 'inspection/view/inspection_home_view.dart';
 
-// ── Import Tambahan untuk Role Supervisor & Database ─────────────────────
 import 'inference/model/apd_result.dart';
 import 'inspection/model/report_model.dart';
 import 'supervisor/controller/dashboard_controller.dart';
 import 'supervisor/view/dashboard_view.dart';
 
-// ── Stub imports — uncomment saat role lain sudah siap ───────────────────
-// import 'core/env_config.dart';                             // Role 3
-// import 'dashboard/view/history_view.dart';                // Role 4
-import 'inspection/controller/inspection_controller.dart'; // Role 2
+import 'inspection/controller/inspection_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Orientasi: portrait only ──────────────────────────────────────────────
+  // ── Orientasi: portrait ──────────────────────────────────────────────
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // ── Status bar: dark icons agar terbaca di background putih ──────────────
+  // ── Status bar ──────────────────────────────────────────────
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -48,13 +44,10 @@ void main() async {
   Hive.registerAdapter(ApdResultAdapter());
   Hive.registerAdapter(ReportModelAdapter());
 
-  // Hive.registerAdapter(InspectionSessionModelAdapter());
-
   // ── Env config init ───────────────────────────────────────────────────────
   await dotenv.load();
   // await EnvConfig.init();
 
-  // ── Inisialisasi Database Controller Supervisor ───────────────────────────
   final dashboardController = DashboardController();
   await dashboardController.init();
 
@@ -88,20 +81,15 @@ class APDGuardApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ── Role 1: Auth — gunakan instance yang sudah restore session ────────
         ChangeNotifierProvider.value(value: authController),
 
-        // ── Role 4: Dashboard Supervisor ────────────────────────────────────
         ChangeNotifierProvider.value(value: dashboardController),
 
-        // ── Role 2+3: Inspection (uncomment saat siap) ──────────────────────
         ChangeNotifierProvider(create: (_) => InspectionController()),
       ],
       child: MaterialApp(
         title: 'APD Guard',
         debugShowCheckedModeBanner: false,
-
-        // ── Light theme: outdoor visibility ──────────────────────────────────
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFFFFB800),
@@ -114,14 +102,10 @@ class APDGuardApp extends StatelessWidget {
         home: const _AuthGate(),
         routes: {
           '/login': (_) => const LoginView(),
-          // Inspector routes
           '/inspection/home': (_) => const InspectionHomeView(),
           '/inspection/camera': (_) => const CameraView(),
-          // Alias lama
           '/inspection': (_) => const InspectionHomeView(),
-          // Supervisor routes
           '/dashboard': (_) => const DashboardView(),
-          // '/history': (_) => const HistoryView(),   // Role 4
         },
       ),
     );

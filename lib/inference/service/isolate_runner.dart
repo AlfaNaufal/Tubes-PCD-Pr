@@ -149,8 +149,6 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
       // PCD preprocessing
       final pcdProcessed = PcdProcessor.applyPCDFilters(resized);
 
-      // FIX: normalize sekarang return 4D [1][H][W][C]
-      // final normalized = PcdProcessor.normalize(pcdProcessed);
       final Float32List normalized = PcdProcessor.normalizeToFloat32(
         pcdProcessed,
       );

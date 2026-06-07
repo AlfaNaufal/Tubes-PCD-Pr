@@ -36,7 +36,6 @@ class PcdProcessor {
     return image;
   }
 
-  // Revisi resize untuk resolusi kamera apapun
   static img.Image resize(img.Image image, int size) {
     final scaleX = size / image.width;
     final scaleY = size / image.height;
@@ -82,7 +81,6 @@ class PcdProcessor {
     return gammaCorrected;
   }
 
-  // processForReport mengikuti resolusi asli, tidak hardcode 480x720
   static img.Image processForReport(
     img.Image rgbImage, {
     num rotationAngle = 90,

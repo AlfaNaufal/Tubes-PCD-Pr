@@ -97,7 +97,6 @@ class _CameraViewState extends State<CameraView> {
     final divisionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    // Hitung status APD dari results
     print(
       'DEBUG results: ${results.map((r) => "${r.label}:${r.confidence.toStringAsFixed(2)}").toList()}',
     );
@@ -374,7 +373,6 @@ class _CameraViewState extends State<CameraView> {
       value: _cameraManager,
       child: Scaffold(
         backgroundColor: Colors.black,
-        // ── FAB dihapus dari Scaffold, dipindah ke dalam Stack ───────────
         body: Consumer<CameraManager>(
           builder: (context, cam, _) {
             if (!cam.isReady) {
@@ -388,20 +386,15 @@ class _CameraViewState extends State<CameraView> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Layer 1: Camera preview
                   _buildCameraPreview(cam),
 
-                  // Layer 2: Bounding box + debug overlay + status banner
                   ApdOverlayWidget(
                     cameraManager: _cameraManager,
                     showDebugInfo: true,
                   ),
 
-                  // Layer 3: Status overlay (paused)
                   _buildStatusOverlay(cam),
 
-                  // Layer 4: Tombol kamera — di atas debug info, di bawah top bar
-                  // Posisi: bottom ~100 px (debug ~30px + banner ~50px + gap 20px)
                   Positioned(
                     bottom: 100,
                     left: 0,
@@ -441,7 +434,6 @@ class _CameraViewState extends State<CameraView> {
                     ),
                   ),
 
-                  // Layer 5: Top bar — Positioned ke atas layar
                   Positioned(
                     top: 0,
                     left: 0,

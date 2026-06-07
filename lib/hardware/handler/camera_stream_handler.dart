@@ -1,11 +1,9 @@
-// lib/hardware/handler/camera_stream_handler.dart
-
 import 'dart:async';
 import 'package:camera/camera.dart';
 import '../controller/camera_manager.dart';
 
-/// CameraStreamHandler adalah jembatan antara [CameraManager] (Role 1)
-/// dan inference pipeline milik Role 2.
+/// CameraStreamHandler adalah jembatan antara [CameraManager]
+/// dan inference pipeline
 ///
 /// Tanggung jawab:
 /// - Subscribe ke stream CameraImage dari CameraManager
@@ -22,20 +20,14 @@ class CameraStreamHandler {
 
   CameraStreamHandler(this._cameraManager);
 
-  // ── Public API ────────────────────────────────────────────────────────────
-
-  /// Stream CameraImage yang bisa di-listen oleh Role 2.
-  /// Broadcast agar bisa di-listen lebih dari satu kali.
   Stream<CameraImage> get imageStream => _streamController.stream;
 
-  /// Mulai mengalirkan frame dari kamera.
-  /// Harus dipanggil setelah [CameraManager.initialize()] selesai.
   Future<void> start() async {
     if (_isActive) return;
     _isActive = true;
 
     await _cameraManager.startImageStream((CameraImage image) {
-      // Guard: skip frame jika frame sebelumnya masih diproses.
+      // Skip frame jika frame sebelumnya masih diproses.
       // Mencegah antrean frame menumpuk di memory (FR-05).
       if (_isProcessing) return;
       _isProcessing = true;
@@ -43,13 +35,11 @@ class CameraStreamHandler {
     });
   }
 
-  /// Sinyal bahwa frame telah selesai diproses oleh Role 2.
-  /// Harus dipanggil oleh InferenceEngine setelah inference selesai.
   void markFrameProcessed() {
     _isProcessing = false;
   }
 
-  /// Hentikan streaming.
+  /// Hentikan streaming
   Future<void> stop() async {
     if (!_isActive) return;
     _isActive = false;
@@ -57,7 +47,6 @@ class CameraStreamHandler {
     await _cameraManager.stopImageStream();
   }
 
-  /// Bersihkan resource. Dipanggil bersamaan dengan dispose widget.
   Future<void> dispose() async {
     await stop();
     await _streamController.close();

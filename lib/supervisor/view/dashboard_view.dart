@@ -1,5 +1,3 @@
-// lib/supervisor/view/dashboard_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controller/dashboard_controller.dart';
@@ -29,7 +27,6 @@ class DashboardView extends StatelessWidget {
           ),
         ),
         actions: [
-          // Pakai ctx dari Consumer, bukan context outer
           Consumer<AuthController>(
             builder:
                 (ctx, auth, _) => IconButton(
@@ -44,7 +41,7 @@ class DashboardView extends StatelessWidget {
           reports.isEmpty
               ? const Center(
                 child: Text(
-                  'Belum ada laporan offline.',
+                  'Belum ada laporan',
                   style: TextStyle(color: Color(0xFF9CA3AF)),
                 ),
               )
@@ -172,7 +169,7 @@ class DashboardView extends StatelessWidget {
     );
   }
 
-  // ── Logout dengan konfirmasi + clear navigation stack ────────────────────
+  // ── Logout  ────────────────────
 
   void _confirmLogout(BuildContext context, AuthController auth) {
     showDialog<void>(
@@ -202,11 +199,8 @@ class DashboardView extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // 1. Tutup dialog
                   Navigator.of(dialogContext).pop();
-                  // 2. Ubah state auth
                   auth.logout();
-                  // 3. Clear seluruh stack → paksa ke /login
                   Navigator.of(
                     context,
                   ).pushNamedAndRemoveUntil('/login', (route) => false);

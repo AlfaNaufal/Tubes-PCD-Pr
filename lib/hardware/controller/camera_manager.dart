@@ -1,9 +1,7 @@
-// lib/hardware/controller/camera_manager.dart
-
 import 'package:camera/camera.dart';
 import 'package:flutter/widgets.dart';
 
-/// Status kamera untuk diobservasi oleh UI
+/// Status kamera
 enum CameraStatus { uninitialized, initializing, ready, paused, error }
 
 /// CameraManager bertanggung jawab atas:
@@ -24,11 +22,10 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
   bool get isReady => _status == CameraStatus.ready;
 
   /// Ukuran preview kamera dalam logical pixels.
-  /// Dibutuhkan oleh CoordinateMapper (Role 3) untuk scaling bbox.
   Size? get previewSize {
     if (_controller == null || !_controller!.value.isInitialized) return null;
     return Size(
-      _controller!.value.previewSize!.height, // height → width (portrait)
+      _controller!.value.previewSize!.height,
       _controller!.value.previewSize!.width,
     );
   }
@@ -75,8 +72,7 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
 
   // ── Stream ────────────────────────────────────────────────────────────────
 
-  /// Mulai streaming CameraImage ke callback.
-  /// Callback ini akan di-listen oleh CameraStreamHandler.
+  /// Mulai streaming CameraImage
   Future<void> startImageStream(
     void Function(CameraImage image) onImage,
   ) async {
@@ -94,8 +90,6 @@ class CameraManager extends ChangeNotifier with WidgetsBindingObserver {
 
   // ── Dispose ───────────────────────────────────────────────────────────────
 
-  /// Dispose kamera sepenuhnya.
-  /// Dipanggil saat widget unmount atau app masuk background.
   Future<void> disposeCamera() async {
     WidgetsBinding.instance.removeObserver(this);
     if (_controller != null) {
