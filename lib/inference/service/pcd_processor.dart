@@ -56,19 +56,20 @@ class PcdProcessor {
     return canvas;
   }
 
-  static Float32List normalizeToFloat32(img.Image image) {
+  static List<List<List<List<double>>>> normalize(img.Image image) {
     final int size = image.width;
-    final buffer = Float32List(size * size * 3);
-    int idx = 0;
-    for (int y = 0; y < size; y++) {
-      for (int x = 0; x < size; x++) {
+    final inner = List.generate(
+      size,
+      (y) => List.generate(size, (x) {
         final pixel = image.getPixel(x, y);
-        buffer[idx++] = pixel.r.toDouble() / 255.0;
-        buffer[idx++] = pixel.g.toDouble() / 255.0;
-        buffer[idx++] = pixel.b.toDouble() / 255.0;
-      }
-    }
-    return buffer;
+        return [
+          pixel.r.toDouble() / 255.0,
+          pixel.g.toDouble() / 255.0,
+          pixel.b.toDouble() / 255.0,
+        ];
+      }),
+    );
+    return [inner];
   }
 
   static img.Image applyPCDFilters(img.Image image) {
@@ -85,7 +86,6 @@ class PcdProcessor {
     img.Image rgbImage, {
     num rotationAngle = 90,
   }) {
-    // Rotate image
     final rotated = img.copyRotate(rgbImage, angle: rotationAngle);
 
     final maxSize = 720;

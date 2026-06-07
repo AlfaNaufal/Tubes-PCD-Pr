@@ -149,11 +149,9 @@ void _isolateEntryPoint(IsolateInitPayload initData) async {
       // PCD preprocessing
       final pcdProcessed = PcdProcessor.applyPCDFilters(resized);
 
-      final Float32List normalized = PcdProcessor.normalizeToFloat32(
-        pcdProcessed,
-      );
+      final normalized = PcdProcessor.normalize(pcdProcessed);
 
-      final rawResults = interpreter.runFloat32(normalized);
+      final rawResults = interpreter.run(normalized);
 
       final results =
           rawResults.where((r) {

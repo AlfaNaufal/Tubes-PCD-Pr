@@ -104,19 +104,15 @@ class ApdInterpreter {
     return true;
   }
 
-  List<ApdResult> runFloat32(Float32List input) {
+  List<ApdResult> run(List<List<List<List<double>>>> input) {
     final output = List.generate(
       1,
-      (_) => List.generate(11, (_) => Float32List(8400)),
+      (_) => List.generate(11, (_) => List.filled(8400, 0.0)),
     );
 
-    _interpreter!.run(input.reshape([1, 640, 640, 3]), output);
+    _interpreter!.run(input, output);
 
-    return _parseOutput(
-      output.map((e) => e.map((f) => f as List<double>).toList()).toList(),
-      11,
-      8400,
-    );
+    return _parseOutput(output, 11, 8400);
   }
 
   List<ApdResult> _parseOutput(
